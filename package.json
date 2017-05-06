@@ -1,0 +1,36 @@
+{
+  "name": "chat-bot-poker",
+  "version": "0.1.0",
+  "description": "Sprint planning poker.",
+  "main": "src/PokerBot.js",
+  "scripts": {
+    "test": "mocha --compilers js:babel-register"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-preset-env": "^1.4.0",
+    "babel-preset-react": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
+    "babel-register": "^6.24.1",
+    "mocha": "^3.3.0"
+  },
+  "babel": {
+    "presets": [
+      [
+        "env",
+        {
+          "targets": {
+            "node": 7
+          }
+        }
+      ],
+      "react",
+      "stage-0"
+    ]
+  },
+  "dependencies": {
+    "chat-bot": "^0.1.0"
+  },
+  "author": "Adrian Cooney <cooney.adrian@gmail.com>",
+  "license": "MIT"
+}
