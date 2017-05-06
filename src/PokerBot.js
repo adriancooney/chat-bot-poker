@@ -1,4 +1,3 @@
-/** @jsx Bot.rule */
 import {
     Bot,
     Mention,

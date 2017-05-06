@@ -8,8 +8,8 @@
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
+    "babel-plugin-transform-react-jsx": "^6.24.1",
     "babel-preset-env": "^1.4.0",
-    "babel-preset-react": "^6.24.1",
     "babel-preset-stage-0": "^6.24.1",
     "babel-register": "^6.24.1",
     "mocha": "^3.3.0"
@@ -24,8 +24,15 @@
           }
         }
       ],
-      "react",
       "stage-0"
+    ],
+    "plugins": [
+      [
+        "transform-react-jsx",
+        {
+          "pragma": "Bot.rule"
+        }
+      ]
     ]
   },
   "dependencies": {
