@@ -58,6 +58,8 @@ export default class PokerBot extends Bot {
             case "PLAN":
                 const { tasklist } = action.payload;
 
+                transition("NEW_GAME", { tasklist });
+
                 return  {
                     ...state,
                     state: "ready",
@@ -70,9 +72,18 @@ export default class PokerBot extends Bot {
         }
     }
 
-    plan({ content, author }) {
-        console.log("Plannign!");
+    transition(action, state, nextState, mutation) {
+        switch(mutation.type) {
+            case "NEW_GAME":
+                return this.sendMessage({
+                    content: "Starting new game with tasklist: " + mutation.payload.tasklist,
+                    to: 10
+                });
+            break;
+        }
+    }
 
+    plan({ content, author }) {
         // Attempt to validate the tasklist
         if(!content.match(/teamwork.com/)) {
             return this.sendMessage({
