@@ -337,7 +337,7 @@ export default class Poker extends Bot {
                 const { person, vote, direct } = mutation.payload;
 
                 if(direct) {
-                    await this.sendMessageToPerson(person.id, `Thanks ${this.formatMention(person)}, your vote of ${vote.value} has been counted.`);
+                    await this.sendMessageToPerson(person, `Thanks ${this.formatMention(person)}, your vote of ${vote.value} has been counted.`);
                     await this.broadcast(`${person.firstName} has voted.`, [person]);
                 } else {
                     await this.broadcast(`${person.firstName} has voted ${vote.value}.`);
@@ -348,12 +348,12 @@ export default class Poker extends Bot {
 
             case "VOTE_UPDATED": {
                 const { person, vote, direct } = mutation.payload;
-                return this.sendMessageToPerson(person.id, `Thanks, you're vote has been updated.`);
+                return this.sendMessageToPerson(person, `Thanks, you're vote has been updated.`);
             }
 
             case "ALL_VOTED": {
                 await this.broadcast(`Thank you, everyone has voted.`);
-                await this.sendMessageToPerson(this.state.moderator.id, `Okay moderator, please estimate.`);
+                await this.sendMessageToPerson(this.state.moderator, `Okay moderator, please estimate.`);
                 return;
             }
 
@@ -371,10 +371,10 @@ export default class Poker extends Bot {
     async broadcast(message, omit = []) {
         await Promise.all(
             differenceBy(this.state.players, omit, player => player.id)
-                .map(player => this.sendMessageToPerson(player.id, message))
+                .map(player => this.sendMessageToPerson(player, message))
         );
 
-        await this.sendMessageToRoom(this.state.room.id, message);
+        await this.sendMessageToRoom(this.state.room, message);
     }
 
     async plan(output, message) {

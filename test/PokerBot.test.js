@@ -4,6 +4,8 @@ import { expect } from "chai";
 import PokerBot from "../src/Poker.js";
 
 describe("PokerBot", () => {
+    debugger;
+
     let chat, room, people, players, moderator, player, bot;
 
     before(() => {
@@ -25,7 +27,7 @@ describe("PokerBot", () => {
             ].map(chat.createPerson.bind(chat)));
 
             // Add them to Chat Team room
-            await Promise.all(players.map(person => chat.addPersonToRoom(person.id, room.id)));
+            await Promise.all(players.map(person => chat.addPersonToRoom(person, room)));
 
             moderator = players[0];
             people = players.slice(1);
@@ -61,22 +63,22 @@ describe("PokerBot", () => {
         describe("@bot plan", () => {
             it("should do nothing if not moderator", async () => {
                 const state = bot.state;
-                await chat.dispatchMessageToRoom(room.id, "@bot plan", player);
+                await chat.dispatchMessageToRoom(room, "@bot plan", player);
                 assert.equal(state, bot.state);
             });
 
             it("should require a tasklist", async () => {
-                await chat.dispatchMessageToRoom(room.id, "@bot plan", moderator);
+                await chat.dispatchMessageToRoom(room, "@bot plan", moderator);
                 await chat.expectMessageInRoom(room, /Please supply a tasklist/);
             });
 
             it("should require a tasklist", async () => {
-                await chat.dispatchMessageToRoom(room.id, "@bot plan invalid-teamwork", moderator);
+                await chat.dispatchMessageToRoom(room, "@bot plan invalid-teamwork", moderator);
                 await chat.expectMessageInRoom(room, /I don't recognize that tasklist/ig);
             });
 
             it("should retrieve the tasklist", async () => {
-                await chat.dispatchMessageToRoom(room.id, "@bot plan teamwork.com/tasklist/foo", moderator);
+                await chat.dispatchMessageToRoom(room, "@bot plan teamwork.com/tasklist/foo", moderator);
                 await chat.expectMessageInRoom(room, /starting new game/i);
 
                 assert.equal(bot.state.status, "ready");
@@ -89,7 +91,7 @@ describe("PokerBot", () => {
             chat.pushState();
             bot.pushState();
 
-            await chat.dispatchMessageToRoom(room.id, "@bot plan teamwork.com/foo", moderator);
+            await chat.dispatchMessageToRoom(room, "@bot plan teamwork.com/foo", moderator);
         });
 
         it("should be in a `ready` state", () => {
@@ -97,14 +99,14 @@ describe("PokerBot", () => {
         });
 
         it("should allow the moderator to start the game", async () => {
-            await chat.dispatchMessageToRoom(room.id, "@bot start", moderator);
+            await chat.dispatchMessageToRoom(room, "@bot start", moderator);
             await chat.expectMessageInRoom(room, /moving to the next round/i)
             assert.equal(bot.state.status, "round");
         });
 
         it("should not allow any player to start the game", async () => {
             const state = bot.state;
-            await chat.dispatchMessageToRoom(room.id, "@bot start", player);
+            await chat.dispatchMessageToRoom(room, "@bot start", player);
             assert.equal(state, bot.state);
         });
 
@@ -119,12 +121,12 @@ describe("PokerBot", () => {
             chat.pushState();
             bot.pushState();
 
-            await chat.dispatchMessageToRoom(room.id, "@bot plan teamwork.com/foo", moderator);
-            await chat.dispatchMessageToRoom(room.id, "@bot start", moderator);
+            await chat.dispatchMessageToRoom(room, "@bot plan teamwork.com/foo", moderator);
+            await chat.dispatchMessageToRoom(room, "@bot start", moderator);
         });
 
         it("should allow a player to vote publically", async () => {
-            await chat.dispatchMessageToRoom(room.id, "@bot vote 10", player);
+            await chat.dispatchMessageToRoom(room, "@bot vote 10", player);
             await chat.expectMessageInRoom(room, /vote/i);
             await Promise.all(people.map(person => chat.expectMessageToPerson(person, new RegExp(`${player.firstName} has voted 10`, "i"))));
 
@@ -137,7 +139,7 @@ describe("PokerBot", () => {
         });
 
         it("should allow a player to vote privately", async () => {
-            await chat.dispatchMessageToPerson(chat.user.id, "vote 10", player);
+            await chat.dispatchMessageToPerson(chat.user, "vote 10", player);
             await chat.expectMessageInRoom(room, /has voted/);
             await chat.expectMessageToPerson(player, /your vote of 10 has been counted/);
 
@@ -155,8 +157,8 @@ describe("PokerBot", () => {
         });
 
         it("should allow a player to update their vote", async () => {
-            await chat.dispatchMessageToPerson(chat.user.id, "vote 10", player);
-            await chat.dispatchMessageToPerson(chat.user.id, "vote 20", player);
+            await chat.dispatchMessageToPerson(chat.user, "vote 10", player);
+            await chat.dispatchMessageToPerson(chat.user, "vote 20", player);
             await chat.expectMessageToPerson(player, /Thanks, you're vote has been updated./);
 
             const votes = bot.state.rounds.pending[0].votes;
@@ -170,8 +172,8 @@ describe("PokerBot", () => {
         });
 
         it("should allow other players to vote", async () => {
-            await chat.dispatchMessageToPerson(chat.user.id, "vote 10", player);
-            await chat.dispatchMessageToPerson(chat.user.id, "vote 20", moderator);
+            await chat.dispatchMessageToPerson(chat.user, "vote 10", player);
+            await chat.dispatchMessageToPerson(chat.user, "vote 20", moderator);
 
             const votes = bot.state.rounds.pending[0].votes;
             expect(votes.length).to.equal(2);
@@ -179,7 +181,7 @@ describe("PokerBot", () => {
 
         it("should close the round after all players have voted", async () => {
             const votes = players.map((_, i) => i);
-            await Promise.all(votes.map((vote, i) => chat.dispatchMessageToPerson(chat.user.id, `vote ${vote}`, players[i])));
+            await Promise.all(votes.map((vote, i) => chat.dispatchMessageToPerson(chat.user, `vote ${vote}`, players[i])));
             await chat.expectMessageInRoom(room, /everyone has voted/i);
             await Promise.all(people.map(person => chat.expectMessageToPerson(person, /everyone has voted/i)));
             await chat.expectMessageToPerson(moderator, /estimate/);
@@ -188,20 +190,20 @@ describe("PokerBot", () => {
         });
 
         it("should allow a moderator to manually estimate", async () => {
-            await chat.dispatchMessageToPerson(chat.user.id, "estimate 10", moderator);
+            await chat.dispatchMessageToPerson(chat.user, "estimate 10", moderator);
             await chat.expectMessageInRoom(room, /moderator picked final estimate of 10/i, 1);
             expect(bot.state.rounds.completed.length).to.equal(1);
         });
 
         it("should allow the moderator to skip the round", async () => {
-            await chat.dispatchMessageToPerson(chat.user.id, "skip", moderator);
+            await chat.dispatchMessageToPerson(chat.user, "skip", moderator);
             await chat.expectMessageInRoom(room, /moderator has skipped the round/i, 1);
             expect(bot.state.rounds.skipped.length).to.equal(1);
         });
 
         it("should allow the moderator to pass the round", async () => {
             const currentRound = bot.state.rounds.pending[0];
-            await chat.dispatchMessageToPerson(chat.user.id, "pass", moderator);
+            await chat.dispatchMessageToPerson(chat.user, "pass", moderator);
             await chat.expectMessageInRoom(room, /moderator has passed the round/i, 1);
             const nextRound = bot.state.rounds.pending[0];
             const lastRound = bot.state.rounds.pending[bot.state.rounds.pending.length - 1];
@@ -212,10 +214,10 @@ describe("PokerBot", () => {
         it("should not allow the moderator to pass the round if it's the final round", async () => {
             // Complete all but the last round
             await Promise.all(bot.state.rounds.pending.slice(1).map(() =>
-                chat.dispatchMessageToRoom(room.id, `@${chat.user.handle} estimate 10`, moderator)
+                chat.dispatchMessageToRoom(room, `@${chat.user.handle} estimate 10`, moderator)
             ));
 
-            await chat.dispatchMessageToRoom(room.id, `@${chat.user.handle} pass`, moderator);
+            await chat.dispatchMessageToRoom(room, `@${chat.user.handle} pass`, moderator);
             await chat.expectMessageInRoom(room, /you cannot pass/i);
         });
 
@@ -230,26 +232,26 @@ describe("PokerBot", () => {
             chat.pushState();
             bot.pushState();
 
-            await chat.dispatchMessageToRoom(room.id, "@bot plan teamwork.com/foo", moderator);
-            await chat.dispatchMessageToRoom(room.id, "@bot start", moderator);
-            await Promise.all(players.map((player, vote) => chat.dispatchMessageToPerson(chat.user.id, `vote ${vote}`, player)));
+            await chat.dispatchMessageToRoom(room, "@bot plan teamwork.com/foo", moderator);
+            await chat.dispatchMessageToRoom(room, "@bot start", moderator);
+            await Promise.all(players.map((player, vote) => chat.dispatchMessageToPerson(chat.user, `vote ${vote}`, player)));
         });
 
         it("should not allow players to vote during moderation", async () => {
-            await chat.dispatchMessageToPerson(chat.user.id, `vote 300`, player);
+            await chat.dispatchMessageToPerson(chat.user, `vote 300`, player);
             expect(bot.state.rounds.pending[0].votes.find(vote => vote.person === player.id).value).to.not.equal(300);
         });
 
         it("should not accept invalid estimates from moderator", async () => {
-            await chat.dispatchMessageToPerson(chat.user.id, `estimate coffee`, moderator);
+            await chat.dispatchMessageToPerson(chat.user, `estimate coffee`, moderator);
             await chat.expectMessageToPerson(moderator, /please enter a positive numerical estimate/);
 
-            await chat.dispatchMessageToPerson(chat.user.id, `estimate -1.1`, moderator);
+            await chat.dispatchMessageToPerson(chat.user, `estimate -1.1`, moderator);
             await chat.expectMessageToPerson(moderator, /please enter a positive numerical estimate/);
         });
 
         it("should accept valid input and move to the next round", async () => {
-            await chat.dispatchMessageToPerson(chat.user.id, `estimate 1.5`, moderator);
+            await chat.dispatchMessageToPerson(chat.user, `estimate 1.5`, moderator);
             await chat.expectMessageInRoom(room, /moderator picked final estimate of 1.5/i, 1);
             await chat.expectMessageInRoom(room, /moving to the next round/i);
 
