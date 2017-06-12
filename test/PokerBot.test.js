@@ -199,7 +199,7 @@ describe("PokerBot", () => {
             expect(bot.state.rounds.skipped.length).to.equal(1);
         });
 
-        it.only("should allow the moderator to pass the round", async () => {
+        it("should allow the moderator to pass the round", async () => {
             const currentRound = bot.state.rounds.pending[0];
             await chat.dispatchMessageToPerson(chat.user.id, "pass", moderator);
             await chat.expectMessageInRoom(room, /moderator has passed the round/i, 1);
@@ -207,6 +207,16 @@ describe("PokerBot", () => {
             const lastRound = bot.state.rounds.pending[bot.state.rounds.pending.length - 1];
             expect(currentRound.id).to.not.equal(nextRound.id);
             expect(lastRound.id).to.equal(currentRound.id);
+        });
+
+        it("should not allow the moderator to pass the round if it's the final round", async () => {
+            // Complete all but the last round
+            await Promise.all(bot.state.rounds.pending.slice(1).map(() =>
+                chat.dispatchMessageToRoom(room.id, `@${chat.user.handle} estimate 10`, moderator)
+            ));
+
+            await chat.dispatchMessageToRoom(room.id, `@${chat.user.handle} pass`, moderator);
+            await chat.expectMessageInRoom(room, /you cannot pass/i);
         });
 
         after(async () => {

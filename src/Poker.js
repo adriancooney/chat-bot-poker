@@ -359,8 +359,11 @@ export default class Poker extends Bot {
 
             case "PASS":
             case "SKIP": {
-                await this.broadcast(`Moderator has ${mutation.type === "SKIP" ? "skipped" : "passed"} the round.`);
-                return;
+                return this.broadcast(`Moderator has ${mutation.type === "SKIP" ? "skipped" : "passed"} the round.`);
+            }
+
+            case "GAME_COMPLETE": {
+                return this.broadcast(`Awesome, game over.`);
             }
         }
     }
