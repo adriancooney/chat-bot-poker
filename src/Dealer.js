@@ -3,7 +3,8 @@ import {
     Rule,
     Mention,
     Command,
-    Any
+    Any,
+    Debug
 } from "chat-bot";
 import Poker from "./Poker";
 
@@ -17,9 +18,9 @@ export default class Dealer extends Bot {
     }
 
     render() {
-        const bots = this.state.bots.map(props => {
+        const bots = this.state.bots.map((props, i) => {
             return (
-                <Poker {...props} />
+                <Poker key={props.id} {...props} />
             )
         });
 
@@ -29,27 +30,29 @@ export default class Dealer extends Bot {
                 <Mention>
                     <Command name="poker" handler={this.createGame.bind(this)} />
                 </Mention>
+                <Debug name="dealer" />
             </Any>
         )
     }
 
     async createGame(input) {
-        // Create the room
-        const room = await this.createRoom({
-            title: "Sprint planning poker"
-        });
+        const currentUser = await this.getCurrentUser();
 
         // Get the users from the message's mentions
-        const participants = await Promise.all(input.mentions.map(({ handle }) => this.getPersonByHandle(handle)));
-        const moderator = input.author;
+        const participants = await Promise.all(
+            input.mentions
+                .filter(({ handle }) => handle !== currentUser.handle)
+                .map(({ handle }) => this.getPersonByHandle(handle))
+        );
 
         if(!participants.length) {
             return this.reply(input, "Please mention at least two other people to join the game.");
         }
 
-        // Add the user's to the room
-        participants.concat(moderator).forEach(async person => {
-            await this.addPersonToRoom(person.id, room.id);
+        const moderator = input.author;
+        const room = await this.createRoom({
+            title: "Sprint planning poker",
+            people: participants.concat(moderator)
         });
 
         // Add the bot to the state
@@ -57,7 +60,8 @@ export default class Dealer extends Bot {
             bots: this.state.bots.concat({
                 room,
                 participants,
-                moderator: input.author
+                moderator,
+                id: Math.random()
             })
         });
     }

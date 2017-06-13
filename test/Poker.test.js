@@ -1,11 +1,9 @@
 import assert from "assert";
 import { Rule, From, Any, TestService } from "chat-bot";
 import { expect } from "chai";
-import PokerBot from "../src/Poker.js";
+import Poker from "../src/Poker.js";
 
-describe("PokerBot", () => {
-    debugger;
-
+describe("Poker", () => {
     let chat, room, people, players, moderator, player, bot;
 
     before(() => {
@@ -33,7 +31,7 @@ describe("PokerBot", () => {
             people = players.slice(1);
             player = people[1];
 
-            bot = Rule.mount(<PokerBot moderator={moderator} room={room} participants={people} />, {
+            bot = Rule.mount(<Poker moderator={moderator} room={room} participants={people} />, {
                 service: chat,
                 user: chat.user
             });
