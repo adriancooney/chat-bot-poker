@@ -20,7 +20,7 @@ export default class Dealer extends Bot {
     render() {
         const bots = this.state.bots.map((props, i) => {
             return (
-                <Poker key={props.id} {...props} />
+                <Poker key={props.id} api={this.props.api} {...props} />
             )
         });
 
@@ -33,6 +33,12 @@ export default class Dealer extends Bot {
                 <Debug name="dealer" />
             </Any>
         )
+    }
+
+    onComplete(id, game) {
+        this.setState({
+            bots: this.state.bots.filter(bot => bot.id !== id)
+        });
     }
 
     async createGame(input) {
@@ -65,13 +71,16 @@ export default class Dealer extends Bot {
             people: participants.concat(moderator)
         });
 
+        const id = `${Math.random()}-${Date.now()}`;
+
         // Add the bot to the state
         this.setState({
             bots: this.state.bots.concat({
+                id,
                 room,
                 participants,
                 moderator,
-                id: Math.random()
+                onComplete: this.onComplete.bind(this, id)
             })
         });
     }

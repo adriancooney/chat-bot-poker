@@ -1,6 +1,7 @@
 import assert from "assert";
 import { Rule, From, Any, TestService } from "chat-bot";
 import { expect } from "chai";
+import { api } from "./fixtures";
 import Poker from "../src/Poker.js";
 
 const EXAMPLE_TASKLIST = "https://1486461376533.teamwork.com/index.cfm#tasklists/457357";
@@ -33,28 +34,12 @@ describe("Poker", () => {
             people = players.slice(1);
             player = people[1];
 
-            bot = Rule.mount(<Poker moderator={moderator} room={room} participants={people} />, {
+            bot = Rule.mount(<Poker api={api} moderator={moderator} room={room} participants={people} />, {
                 service: chat,
                 user: chat.user
             });
 
             chat.connect(bot);
-
-            bot.getTasks = () => {
-                return Promise.resolve([{
-                    title: "Example task",
-                    id: 1,
-                    link: "http://foobar.com"
-                }, {
-                    title: "Example task 2",
-                    id: 2,
-                    link: "http://foobar.com"
-                }, {
-                    title: "Example task 3",
-                    id: 3,
-                    link: "http://foobar.com"
-                }]);
-            };
         });
     });
 
@@ -95,7 +80,7 @@ describe("Poker", () => {
 
             it("should retrieve the tasklist", async () => {
                 await chat.dispatchMessageToRoom(room, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
-                await chat.expectMessageInRoom(room, /starting new game/i);
+                await chat.expectMessageInRoom(room, /waiting for the moderator to start/i);
 
                 assert.equal(bot.state.status, "ready");
             });
@@ -213,14 +198,14 @@ describe("Poker", () => {
 
         it("should allow the moderator to skip the round", async () => {
             await chat.dispatchMessageToPerson(chat.user, "skip", moderator);
-            await chat.expectMessageInRoom(room, /moderator has skipped the round/i, 2);
+            await chat.expectMessageInRoom(room, /moderator has skipped the task/i, 2);
             expect(bot.state.rounds.skipped.length).to.equal(1);
         });
 
         it("should allow the moderator to pass the round", async () => {
             const currentRound = bot.state.rounds.pending[0];
             await chat.dispatchMessageToPerson(chat.user, "pass", moderator);
-            await chat.expectMessageInRoom(room, /moderator has passed the round/i, 2);
+            await chat.expectMessageInRoom(room, /moderator has passed the task/i, 2);
             const nextRound = bot.state.rounds.pending[0];
             const lastRound = bot.state.rounds.pending[bot.state.rounds.pending.length - 1];
             expect(currentRound.id).to.not.equal(nextRound.id);

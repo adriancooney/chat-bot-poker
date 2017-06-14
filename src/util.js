@@ -1,16 +1,16 @@
 import moment from "moment";
 import { max, map } from "lodash";
 
-export function formatMarkdownTable(rows) {
-    const headers = Object.keys(rows[0]);
+export function formatMarkdownTable(rows, headers, titleMap = {}) {
+    headers = headers || Object.keys(rows[0]);
     const widths = headers.reduce((counts, header) => {
         return Object.assign(counts, {
-            [header]: max(rows.map(row => Math.max(header.length, row[header].toString().length))) + 2
+            [header]: max(rows.map(row => Math.max((titleMap[header] || header).length, row[header].toString().length))) + 2
         });
     }, {});
 
     return [
-        `| ${headers.map(header => header.padEnd(widths[header] - 1 - header.length)).join(" | ")} |`,
+        `| ${headers.map(header => (titleMap[header] || header).padEnd(widths[header] - 1 - (titleMap[header] || header).length)).join(" | ")} |`,
         `|${headers.map(header => "-".repeat(widths[header])).join("|")}|`
     ].concat(rows.map(row => {
         return `| ${headers.map(header => {
@@ -46,7 +46,7 @@ export function parseTasklist(tasklist) {
     if(match) {
         return {
             installation: match[1],
-            tasklist: parseInt(match[2], 10)
+            id: parseInt(match[2], 10)
         };
     } else {
         return null;

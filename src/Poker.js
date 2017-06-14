@@ -1,3 +1,4 @@
+import qs from "qs";
 import {
     unionBy,
     differenceBy,
@@ -39,8 +40,21 @@ export default class Poker extends Bot {
         };
     }
 
-    onMount() {
-        this.broadcast("Welcome to sprint planning!");
+    async onMount() {
+        const currentUser = await this.getCurrentUser();
+
+        return this.broadcast(player => {
+            let output = `:mega: Welcome to Sprint Planning Poker!\n`
+
+            if(player && player.id === this.state.moderator.id) {
+                output += `:guardsman: ${player.firstName}, you are the moderator. To pick a tasklist to plan, send \`plan <tasklist url>\`.\n`;
+            } else {
+                output += `:guardsman: ${this.formatMention(this.state.moderator)}, is the moderator.\n`;
+                output += `:mega: We're waiting for the moderator to pick a tasklist to plan (\`${this.formatMention(currentUser)} plan <tasklist url>\`).\n`;
+            }
+
+            return output;
+        });
     }
 
     render() {
@@ -146,14 +160,18 @@ export default class Poker extends Bot {
         switch(action.type) {
             case "PLAN": {
                 const { tasklist, tasks } = action.payload;
-                transition("NEW_GAME", { tasklist });
+                transition("NEW_GAME", { tasklist, tasks });
 
                 return  {
                     ...state,
                     status: "ready",
+                    timestamps: {
+                        startTime: Date.now()
+                    },
                     rounds: {
                         pending: tasks.map(task => ({
-                            ...task,
+                            task,
+                            id: task.id,
                             votes: []
                         })),
                         completed: [],
@@ -250,7 +268,7 @@ export default class Poker extends Bot {
 
                     // Transition to the next round
                     transition("NEXT_ROUND", {
-                        round: state.rounds.pending[0], vote
+                        round: rounds.pending[0], vote
                     });
                 } else {
                     status = "complete";
@@ -267,13 +285,15 @@ export default class Poker extends Bot {
             }
 
             case "SKIP": {
+                const round = state.rounds.pending[0];
+
                 const rounds = {
                     ...state.rounds,
-                    skipped: state.rounds.skipped.concat(state.rounds.pending[0]),
+                    skipped: state.rounds.skipped.concat(round),
                     pending: state.rounds.pending.slice(1)
                 };
 
-                transition("SKIP");
+                transition("SKIP", { round });
 
                 let status;
                 if(rounds.pending.length) {
@@ -281,7 +301,7 @@ export default class Poker extends Bot {
 
                     // Transition to the next round
                     transition("NEXT_ROUND", {
-                        round: state.rounds.pending[0]
+                        round: rounds.pending[0]
                     });
                 } else {
                     status = "complete";
@@ -298,6 +318,7 @@ export default class Poker extends Bot {
             }
 
             case "PASS": {
+                const round = state.rounds.pending[0];
                 const rounds = {
                     ...state.rounds,
                     pending: state.rounds.pending.slice(1).concat({
@@ -306,9 +327,9 @@ export default class Poker extends Bot {
                     })
                 };
 
-                transition("PASS");
+                transition("PASS", { round });
                 transition("NEXT_ROUND", {
-                    round: state.rounds.pending[0]
+                    round: rounds.pending[0]
                 });
 
                 return {
@@ -325,21 +346,62 @@ export default class Poker extends Bot {
     async transition(action, state, nextState, mutation) {
         switch(mutation.type) {
             case "NEW_GAME": {
-                return this.broadcast(`:mega: Starting new game with tasklist: ${mutation.payload.tasklist}`);
+                const { tasklist, tasks } = mutation.payload;
+                const currentUser = await this.getCurrentUser();
+
+                await this.broadcast(`:mega: Planning: [${tasklist.title}](${tasklist.link}) (${tasks.length} tasks)`);
+                await this.broadcast(player => {
+                    if(!player) {
+                        return `:mega: Waiting for the moderator to start (${this.formatMention(nextState.moderator)}, send \`${this.formatMention(currentUser)} start\`).`;
+                    } else if(player.id === nextState.moderator.id) {
+                        return `:mega: Waiting for you to start the game, ${nextState.moderator.firstName}. Send \`start\`.`;
+                    } else {
+                        return `:mega: Waiting for moderator to start.`
+                    }
+                });
+
+                return;
             }
 
             case "NEXT_ROUND": {
                 const { round, vote } = mutation.payload;
+                const currentUser = await this.getCurrentUser();
 
                 if(vote) {
                     await this.broadcast(`:mega: Moderator picked final estimate of ${formatVote(vote)}.`);
                 }
 
-                await this.broadcast(`---\n:arrow_right: [${round.title}](${round.link}).`);
-                await this.broadcast(player =>
-                    `Please vote either publically with \`@bot vote <estimate>\` or in private using just a number. ` +
-                    `**Voting here is ${player ? "private" : "public"}.**`
+                const moderator = nextState.players.find(player => player.id === nextState.moderator.id);
+                const totalPending = nextState.rounds.pending.length;
+                const totalSkipped = nextState.rounds.skipped.length;
+                const totalCompleted = nextState.rounds.completed.length;
+                const totalTasks = totalPending + totalSkipped + totalCompleted;
+
+                await this.broadcast(
+                    `---\n:arrow_right: #${totalCompleted + 1} [${round.task.title}](${round.task.link}) (${totalCompleted} of ${totalPending + totalCompleted} tasks completed${totalSkipped > 0 ? `, ${totalSkipped} skipped` : ""})`
                 );
+
+                await this.broadcast(player => {
+                    const isModerator = player && player.id === nextState.moderator.id;
+                    let output = `:mega: Please vote by ${!player ? `sending \`${this.formatMention(currentUser)} vote <estimate>\` or in a private message.\n` : "sending just a number estimate e.g. `1.5` for 1 hour and 30 minutes.\n"}`;
+
+                    if(round.task["estimated-minutes"]) {
+                        output += `:warning: This task already has an estimate of ${formatVote(round.task["estimated-minutes"]/60)}. `;
+
+                        if(isModerator) {
+                            output += `You, as moderator, can skip the task by sending \`skip\`.\n`;
+                        } else {
+                            output += `The moderator can skip the task by \`${this.formatMention(currentUser)} skip\`.\n`;
+                        }
+                    }
+
+                    if(isModerator) {
+                        output += `:guardsman: You can manually set the estimate by sending \`estimate <estimate>\` or push the task to the end with \`pass\`.\n`;
+                    }
+
+                    return output + `:${player ? "white_circle" : "warning"}: Voting here is **${player ? "private" : "public"}**.`
+                });
+
                 return;
             }
 
@@ -362,7 +424,7 @@ export default class Poker extends Bot {
                     await this.sendMessageToPerson(person, `Thanks, your vote has been updated to ${formatVote(vote.value)}.`);
                     await this.broadcast(`:ballot_box_with_check: ${person.firstName} has updated their vote.`, [person]);
                 } else {
-                    await this.broadcast(`:ballot_box_with_check: ${person.firstName} has updated their vote to ${vote.value}.`);
+                    await this.broadcast(`:ballot_box_with_check: ${person.firstName} has updated their vote to ${formatVote(vote.value)}.`);
                 }
 
                 return;
@@ -378,18 +440,56 @@ export default class Poker extends Bot {
                     return Object.assign(table, { [person.firstName]: vote.value });
                 }, {});
 
-                await this.broadcast(`:high_brightness: Thank you, everyone has voted. Average vote: ${formatVote(averageVote)}\n\n${formatMarkdownTable([table])}. Awaiting moderator to estimate task.`);
+                await this.broadcast(`:high_brightness: Thank you, everyone has voted. Average vote: ${formatVote(averageVote)}\n\n${formatMarkdownTable([table])}\n\n:mega: Awaiting moderator to estimate task.`);
                 await this.sendMessageToPerson(this.state.moderator, `Okay moderator, please submit your estimate. (\`estimate 10\` to estimate 10 hours)`);
                 return;
             }
 
             case "PASS":
             case "SKIP": {
-                return this.broadcast(`:ballot_box_with_check: Moderator has ${mutation.type === "SKIP" ? "skipped" : "passed"} the round.`);
+                const round = mutation.payload.round;
+                return this.broadcast(`:mega: Moderator has ${mutation.type === "SKIP" ? "skipped" : "passed"} the task *${round.task.title}*.`);
             }
 
             case "GAME_COMPLETE": {
-                return this.broadcast(`Awesome, game over.`);
+                let output = `:mega: Sprint planning complete: [${nextState.tasklist.title}](${nextState.tasklist.link})\n`;
+
+                if(nextState.rounds.completed.length) {
+                    const headers = ["title", ...nextState.players.map(person => person.firstName), "finalVote"];
+                    const completedTable = formatMarkdownTable(nextState.rounds.completed.map(round => {
+                        const votes = nextState.players.reduce((votes, person) => {
+                            const vote = round.votes.find(vote => vote.person === person.id);
+
+                            return Object.assign(votes, {
+                                [person.firstName]: vote ? vote.value : "-"
+                            })
+                        }, {});
+
+                        return Object.assign(votes, {
+                            title: `[${round.task.title}](${round.task.link})`,
+                            finalVote: round.finalVote
+                        });
+                    }), headers, {
+                        "title": "Title",
+                        "finalVote": "Final Vote"
+                    });
+
+                    output += `\n${completedTable}\n`;
+                }
+
+                if(nextState.rounds.skipped.length) {
+                    const skippedRounds = nextState.rounds.skipped.map(round => {
+                        return ` * [${round.task.title}](${round.task.link})`
+                    }).join("\n");
+
+                    output += `\nSkipped tasks:\n${skippedRounds}`;
+                }
+
+                await this.broadcast(output);
+
+                if(this.props.onComplete) {
+                    return this.props.onComplete(this.state);
+                }
             }
         }
     }
@@ -410,16 +510,20 @@ export default class Poker extends Bot {
             return this.reply(message, "Please supply a tasklist.");
         }
 
-        const tasklist = parseTasklist(content);
+        let tasklist = parseTasklist(content);
 
         // Attempt to validate the tasklist
         if(!tasklist) {
             return this.reply(message, "Uh oh, I don't recognize that tasklist! Example: `https://1486461376533.teamwork.com/index.cfm#tasklists/457357`");
         }
 
+        // Grab the tasklist from the API
+        tasklist = await this.getTasklist(tasklist.id);
+        const tasks = await this.getTasks(tasklist);
+
         // Grab the tasks from the API and create the rounds
         return this.dispatch("PLAN", {
-            tasklist, tasks: await this.getTasks(tasklist)
+            tasklist, tasks
         });
     }
 
@@ -453,14 +557,14 @@ export default class Poker extends Bot {
         return this.dispatch("PASS");
     }
 
-    estimate(input) {
+    async estimate(input) {
         const estimate = parseFloat(input.content);
 
         if(isNaN(estimate) || estimate < 0) {
             return this.reply(input, `Sorry ${this.state.moderator.firstName}, please enter a positive numerical estimate.`);
         }
 
-        // TODO: Update estimate on task in Projects
+        await this.updateTask(this.state.tasklist, this.state.rounds.pending[0].task.id, estimate);
 
         return this.dispatch("FINAL_VOTE", {
             vote: estimate
@@ -471,8 +575,43 @@ export default class Poker extends Bot {
         return this.reply(message, "Showing status.");
     }
 
-    async getTasks(api, tasklist) {
-        console.log("CALLED HERE")
+    async getTasklist(id) {
+        const tasklist = (await this.props.api.request(`/tasklists/${id}.json`))["todo-list"];
+
+        return Object.assign(tasklist, {
+            id: parseInt(tasklist.id, 10),
+            title: tasklist.name,
+            link: `${this.props.api.installation}/#/tasklists/${tasklist.id}`
+        });
+    }
+
+    async getTasks(tasklist) {
+        const tasks = (await this.props.api.request(`/tasklists/${tasklist.id}/tasks.json`))["todo-items"];
+
+        return tasks.map(task => Object.assign(task, {
+            title: task.content,
+            link: `${this.props.api.installation}/#/tasks/${task.id}`
+        }));
+    }
+
+    async updateTask(tasklist, id, estimate) {
+        const hours = Math.floor(estimate);
+        const minutes = Math.floor((estimate - hours) * 60);
+
+        await this.props.api.request("/?action=invoke.tasks.OnSetTaskEstimates()", {
+            method: "POST",
+            raw: true,
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "twProjectsVer": "2.0"
+            },
+            body: qs.stringify({
+                projectId: tasklist.projectId,
+                taskId: id,
+                taskEstimateHours: hours,
+                taskEstimateMins: minutes
+            })
+        });
     }
 }
 

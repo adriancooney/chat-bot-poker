@@ -29,8 +29,18 @@ describe("util", () => {
         it("should parse a valid tasklist", () => {
             assert.deepEqual(parseTasklist("https://1486461376533.teamwork.com/index.cfm#tasklists/457357"), {
                 installation: "1486461376533",
-                tasklist: 457357
-            })
+                id: 457357
+            });
+
+            assert.deepEqual(parseTasklist("https://1486461376533.teamwork.com/index.cfm#/tasklists/457357"), {
+                installation: "1486461376533",
+                id: 457357
+            });
+
+            assert.deepEqual(parseTasklist("https://1486461376533.teamwork.com/tasklists/457357"), {
+                installation: "1486461376533",
+                id: 457357
+            });
         });
     });
 });
