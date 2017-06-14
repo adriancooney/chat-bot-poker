@@ -1,6 +1,7 @@
 import {
     unionBy,
-    differenceBy
+    differenceBy,
+    meanBy
 } from "lodash";
 import {
     Bot,
@@ -13,6 +14,7 @@ import {
     Private,
     Match
 } from "chat-bot";
+import { formatMarkdownTable, formatDuration } from "./util";
 
 export default class Poker extends Bot {
     constructor(props, context) {
@@ -108,13 +110,12 @@ export default class Poker extends Bot {
             // First state: During a round, plays can publically or privately vote.
             // In public, they have to prefix it with the command `vote`
             case "round": {
-                let voter = (
+                let voter = <Vote onVote={this.handleVote.bind(this)} />;
+                publicInputs.push(
                     <Command name="vote">
-                        <Vote onVote={this.handleVote.bind(this)} />
+                        { voter }
                     </Command>
                 );
-
-                publicInputs.push(voter);
                 privateInputs.push(voter);
 
                 break;
@@ -160,7 +161,7 @@ export default class Poker extends Bot {
 
             case "START": {
                 transition("NEXT_ROUND", {
-                    round: getCurrentRound(state)
+                    round: state.rounds.pending[0]
                 });
 
                 return {
@@ -172,7 +173,7 @@ export default class Poker extends Bot {
             case "VOTE": {
                 const { person, vote, direct } = action.payload;
                 const timestamp = Date.now();
-                const currentRound = getCurrentRound(state);
+                const currentRound = state.rounds.pending[0];
 
                 // Find the person's current/previous votes
                 let personVote = currentRound.votes.find(vote => vote.person === person.id);
@@ -320,17 +321,17 @@ export default class Poker extends Bot {
     async transition(action, state, nextState, mutation) {
         switch(mutation.type) {
             case "NEW_GAME": {
-                return this.broadcast(`Starting new game with tasklist: ${mutation.payload.tasklist}`);
+                return this.broadcast(`:mega: Starting new game with tasklist: ${mutation.payload.tasklist}`);
             }
 
             case "NEXT_ROUND": {
                 const { round, vote } = mutation.payload;
 
                 if(vote) {
-                    await this.broadcast(`Moderator picked final estimate of ${vote}`);
+                    await this.broadcast(`:mega: Moderator picked final estimate of ${formatDuration(vote)} (${vote}).`);
                 }
 
-                return this.broadcast(`Moving to the next round: ${round.title}`);
+                return this.broadcast(`:arrow_right: Moving to the next round: [${round.title}](${round.link})`);
             }
 
             case "VOTE_COUNTED": {
@@ -338,9 +339,9 @@ export default class Poker extends Bot {
 
                 if(direct) {
                     await this.sendMessageToPerson(person, `Thanks ${this.formatMention(person)}, your vote of ${vote.value} has been counted.`);
-                    await this.broadcast(`${person.firstName} has voted.`, [person]);
+                    await this.broadcast(`:ballot_box_with_check: ${person.firstName} has voted.`, [person]);
                 } else {
-                    await this.broadcast(`${person.firstName} has voted ${vote.value}.`);
+                    await this.broadcast(`:ballot_box_with_check: ${person.firstName} has voted ${vote.value}.`);
                 }
 
                 return;
@@ -348,18 +349,27 @@ export default class Poker extends Bot {
 
             case "VOTE_UPDATED": {
                 const { person, vote, direct } = mutation.payload;
-                return this.sendMessageToPerson(person, `Thanks, you're vote has been updated.`);
+                return this.sendMessageToPerson(person, `Thanks, your vote has been updated to ${formatDuration(vote.value)} (${vote.value}).`);
             }
 
             case "ALL_VOTED": {
-                await this.broadcast(`Thank you, everyone has voted.`);
-                await this.sendMessageToPerson(this.state.moderator, `Okay moderator, please estimate.`);
+                const round = nextState.rounds.pending[0];
+                const votes = round.votes;
+                const averageVote = meanBy(votes, "value");
+
+                const table = votes.reduce((table, vote) => {
+                    const person = nextState.players.find(person => person.id === vote.person);
+                    return Object.assign(table, { [person.firstName]: vote.value });
+                }, {});
+
+                await this.broadcast(`:high_brightness: Thank you, everyone has voted. Average vote: ${formatDuration(averageVote)}\n\n${formatMarkdownTable([table])}`);
+                await this.sendMessageToPerson(this.state.moderator, `Okay moderator, please submit your estimate. Average vote: ${averageVote}`);
                 return;
             }
 
             case "PASS":
             case "SKIP": {
-                return this.broadcast(`Moderator has ${mutation.type === "SKIP" ? "skipped" : "passed"} the round.`);
+                return this.broadcast(`:ballot_box_with_check: Moderator has ${mutation.type === "SKIP" ? "skipped" : "passed"} the round.`);
             }
 
             case "GAME_COMPLETE": {
@@ -445,10 +455,8 @@ export default class Poker extends Bot {
     }
 }
 
-const getCurrentRound = state => state.rounds.pending[0];
-
 class Vote extends Bot {
-    static VOTE_EXPR = /(\d+(?:\.\d+)?|coffee|infinity)/;
+    static VOTE_EXPR = /^\s*(\d+(?:\.\d+)?|coffee|infinity)/;
 
     render() {
         // Votes can one of the following
@@ -478,13 +486,16 @@ export class Teamwork {
     static async getTasks() {
         return [{
             title: "Example task",
-            id: 1
+            id: 1,
+            link: "http://foobar.com"
         }, {
             title: "Example task 2",
-            id: 2
+            id: 2,
+            link: "http://foobar.com"
         }, {
             title: "Example task 3",
-            id: 3
+            id: 3,
+            link: "http://foobar.com"
         }];
     }
 }
