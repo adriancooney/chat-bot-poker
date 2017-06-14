@@ -1,5 +1,5 @@
 import assert from "assert";
-import { formatMarkdownTable, formatDuration } from "../src/util";
+import { formatMarkdownTable, formatDuration, parseTasklist } from "../src/util";
 
 describe("util", () => {
     describe("formatMarkdownTable", () => {
@@ -22,6 +22,15 @@ describe("util", () => {
     describe("formatDuration", () => {
         it("should correctly format a duration", () => {
             assert.equal("1 hour and 5 minutes", formatDuration(1 + (5/60)));
+        });
+    });
+
+    describe("parseTasklist", () => {
+        it("should parse a valid tasklist", () => {
+            assert.deepEqual(parseTasklist("https://1486461376533.teamwork.com/index.cfm#tasklists/457357"), {
+                installation: "1486461376533",
+                tasklist: 457357
+            })
         });
     });
 });

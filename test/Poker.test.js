@@ -3,6 +3,8 @@ import { Rule, From, Any, TestService } from "chat-bot";
 import { expect } from "chai";
 import Poker from "../src/Poker.js";
 
+const EXAMPLE_TASKLIST = "https://1486461376533.teamwork.com/index.cfm#tasklists/457357";
+
 describe("Poker", () => {
     let chat, room, people, players, moderator, player, bot;
 
@@ -17,11 +19,11 @@ describe("Poker", () => {
 
             // Add the team
             players = await Promise.all([
-                { firstName: "Adrian", lastName: "Cooney", handle: "adrianc" },
-                { firstName: "Donal", lastName: "Linehan", handle: "donal" },
-                { firstName: "Lukasz", lastName: "Baczynski", handle: "lukasz" },
-                { firstName: "Dawid", lastName: "Myslak", handle: "dawid" },
-                { firstName: "Michael", lastName: "Barrett", handle: "michael" }
+                { firstName: "Adrian",  lastName: "Cooney",     handle: "adrianc" },
+                { firstName: "Donal",   lastName: "Linehan",    handle: "donal" },
+                { firstName: "Lukasz",  lastName: "Baczynski",  handle: "lukasz" },
+                { firstName: "Dawid",   lastName: "Myslak",     handle: "dawid" },
+                { firstName: "Michael", lastName: "Barrett",    handle: "michael" }
             ].map(chat.createPerson.bind(chat)));
 
             // Add them to Chat Team room
@@ -37,6 +39,22 @@ describe("Poker", () => {
             });
 
             chat.connect(bot);
+
+            bot.getTasks = () => {
+                return Promise.resolve([{
+                    title: "Example task",
+                    id: 1,
+                    link: "http://foobar.com"
+                }, {
+                    title: "Example task 2",
+                    id: 2,
+                    link: "http://foobar.com"
+                }, {
+                    title: "Example task 3",
+                    id: 3,
+                    link: "http://foobar.com"
+                }]);
+            };
         });
     });
 
@@ -76,7 +94,7 @@ describe("Poker", () => {
             });
 
             it("should retrieve the tasklist", async () => {
-                await chat.dispatchMessageToRoom(room, "@bot plan teamwork.com/tasklist/foo", moderator);
+                await chat.dispatchMessageToRoom(room, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
                 await chat.expectMessageInRoom(room, /starting new game/i);
 
                 assert.equal(bot.state.status, "ready");
@@ -89,7 +107,7 @@ describe("Poker", () => {
             chat.pushState();
             bot.pushState();
 
-            await chat.dispatchMessageToRoom(room, "@bot plan teamwork.com/foo", moderator);
+            await chat.dispatchMessageToRoom(room, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
         });
 
         it("should be in a `ready` state", () => {
@@ -98,7 +116,7 @@ describe("Poker", () => {
 
         it("should allow the moderator to start the game", async () => {
             await chat.dispatchMessageToRoom(room, "@bot start", moderator);
-            await chat.expectMessageInRoom(room, /moving to the next round/i)
+            await chat.expectMessageInRoom(room, /please vote/i)
             assert.equal(bot.state.status, "round");
         });
 
@@ -119,7 +137,7 @@ describe("Poker", () => {
             chat.pushState();
             bot.pushState();
 
-            await chat.dispatchMessageToRoom(room, "@bot plan teamwork.com/foo", moderator);
+            await chat.dispatchMessageToRoom(room, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
             await chat.dispatchMessageToRoom(room, "@bot start", moderator);
         });
 
@@ -189,20 +207,20 @@ describe("Poker", () => {
 
         it("should allow a moderator to manually estimate", async () => {
             await chat.dispatchMessageToPerson(chat.user, "estimate 10", moderator);
-            await chat.expectMessageInRoom(room, /moderator picked final estimate of 10/i, 1);
+            await chat.expectMessageInRoom(room, /moderator picked final estimate of 10/i, 2);
             expect(bot.state.rounds.completed.length).to.equal(1);
         });
 
         it("should allow the moderator to skip the round", async () => {
             await chat.dispatchMessageToPerson(chat.user, "skip", moderator);
-            await chat.expectMessageInRoom(room, /moderator has skipped the round/i, 1);
+            await chat.expectMessageInRoom(room, /moderator has skipped the round/i, 2);
             expect(bot.state.rounds.skipped.length).to.equal(1);
         });
 
         it("should allow the moderator to pass the round", async () => {
             const currentRound = bot.state.rounds.pending[0];
             await chat.dispatchMessageToPerson(chat.user, "pass", moderator);
-            await chat.expectMessageInRoom(room, /moderator has passed the round/i, 1);
+            await chat.expectMessageInRoom(room, /moderator has passed the round/i, 2);
             const nextRound = bot.state.rounds.pending[0];
             const lastRound = bot.state.rounds.pending[bot.state.rounds.pending.length - 1];
             expect(currentRound.id).to.not.equal(nextRound.id);
@@ -230,7 +248,7 @@ describe("Poker", () => {
             chat.pushState();
             bot.pushState();
 
-            await chat.dispatchMessageToRoom(room, "@bot plan teamwork.com/foo", moderator);
+            await chat.dispatchMessageToRoom(room, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
             await chat.dispatchMessageToRoom(room, "@bot start", moderator);
             await Promise.all(players.map((player, vote) => chat.dispatchMessageToPerson(chat.user, `${vote}`, player)));
         });
@@ -250,8 +268,8 @@ describe("Poker", () => {
 
         it("should accept valid input and move to the next round", async () => {
             await chat.dispatchMessageToPerson(chat.user, `estimate 1.5`, moderator);
-            await chat.expectMessageInRoom(room, /moderator picked final estimate of 1 hour and 30 minutes/i, 1);
-            await chat.expectMessageInRoom(room, /moving to the next round/i);
+            await chat.expectMessageInRoom(room, /moderator picked final estimate of 1 hour and 30 minutes/i, 2);
+            await chat.expectMessageInRoom(room, /please vote/i);
 
             const rounds = bot.state.rounds;
             expect(rounds.completed.length).to.equal(1);

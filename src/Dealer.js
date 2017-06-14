@@ -38,12 +38,22 @@ export default class Dealer extends Bot {
     async createGame(input) {
         const currentUser = await this.getCurrentUser();
 
+        let participants;
+
         // Get the users from the message's mentions
-        const participants = await Promise.all(
-            input.mentions
-                .filter(({ handle }) => handle !== currentUser.handle)
-                .map(({ handle }) => this.getPersonByHandle(handle))
-        );
+        try {
+            participants = await Promise.all(
+                input.mentions
+                    .filter(({ handle }) => handle !== currentUser.handle)
+                    .map(({ handle }) => this.getPersonByHandle(handle))
+            );
+        } catch(err) {
+            if(err.message.match(/no person found/i)) {
+                return this.reply(input, err.message);
+            }
+
+            throw err;
+        }
 
         if(!participants.length) {
             return this.reply(input, "Please mention at least two other people to join the game.");

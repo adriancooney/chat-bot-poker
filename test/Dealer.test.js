@@ -3,6 +3,8 @@ import { Rule, From, Any, TestService } from "chat-bot";
 import { expect } from "chai";
 import Dealer from "../src/Dealer.js";
 
+const EXAMPLE_TASKLIST = "https://1486461376533.teamwork.com/index.cfm#tasklists/457357";
+
 describe("Dealer", () => {
     let chat, room, people, players, moderator, player, bot;
 
@@ -62,20 +64,28 @@ describe("Dealer", () => {
         const pokerBot = bot.state.bots[0];
         expect(pokerBot.moderator.id).to.equal(moderator.id);
 
-        await chat.dispatchMessageToRoom(pokerRoom, "@bot plan teamwork.com/foo", moderator);
+        // Stub the `getTasks` function on the poker bot -> Any -> Poker
+        bot.mount.mount[0].getTasks = getTasks;
+
+        await chat.dispatchMessageToRoom(pokerRoom, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
         await chat.expectMessageInRoom(pokerRoom, /starting new game/i);
     });
 
     it("should handle multiple games", async () => {
-        debugger;
         await chat.dispatchMessageToRoom(room, `@bot poker ${people.map(person => chat.formatMention(person)).join(", ")}`, moderator);
         const pokerRoom1 = (await chat.getAllRooms()).find(room => room.title.match(/sprint planning poker/i));
         await chat.dispatchMessageToRoom(room, `@bot poker ${people.map(person => chat.formatMention(person)).join(", ")}`, moderator);
         const pokerRoom2 = (await chat.getAllRooms()).find(room => room !== pokerRoom1 && room.title.match(/sprint planning poker/i));
 
-        await chat.dispatchMessageToRoom(pokerRoom1, "@bot plan teamwork.com/foo", moderator);
+        bot.mount.mount.forEach(rule => {
+            if(rule.constructor.name === "Poker") {
+                rule.getTasks = getTasks;
+            }
+        });
+
+        await chat.dispatchMessageToRoom(pokerRoom1, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
         await chat.expectMessageInRoom(pokerRoom1, /starting new game/i);
-        await chat.dispatchMessageToRoom(pokerRoom2, "@bot plan teamwork.com/foo", moderator);
+        await chat.dispatchMessageToRoom(pokerRoom2, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
         await chat.expectMessageInRoom(pokerRoom2, /starting new game/i);
 
         // Remove one of the bots
@@ -87,7 +97,7 @@ describe("Dealer", () => {
         await chat.expectMessageInRoom(pokerRoom1, /@bot start/);
 
         await chat.dispatchMessageToRoom(pokerRoom2, "@bot start", moderator);
-        await chat.expectMessageInRoom(pokerRoom2, /moving to the next round/i);
+        await chat.expectMessageInRoom(pokerRoom2, /please vote/i);
     });
 
     afterEach(() => {
@@ -95,3 +105,19 @@ describe("Dealer", () => {
         bot.popState();
     });
 });
+
+function getTasks() {
+    return Promise.resolve([{
+        title: "Example task",
+        id: 1,
+        link: "http://foobar.com"
+    }, {
+        title: "Example task 2",
+        id: 2,
+        link: "http://foobar.com"
+    }, {
+        title: "Example task 3",
+        id: 3,
+        link: "http://foobar.com"
+    }]);
+};

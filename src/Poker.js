@@ -14,7 +14,11 @@ import {
     Private,
     Match
 } from "chat-bot";
-import { formatMarkdownTable, formatDuration } from "./util";
+import {
+    formatMarkdownTable,
+    formatVote,
+    parseTasklist
+} from "./util";
 
 export default class Poker extends Bot {
     constructor(props, context) {
@@ -328,10 +332,15 @@ export default class Poker extends Bot {
                 const { round, vote } = mutation.payload;
 
                 if(vote) {
-                    await this.broadcast(`:mega: Moderator picked final estimate of ${formatDuration(vote)} (${vote}).`);
+                    await this.broadcast(`:mega: Moderator picked final estimate of ${formatVote(vote)}.`);
                 }
 
-                return this.broadcast(`:arrow_right: Moving to the next round: [${round.title}](${round.link})`);
+                await this.broadcast(`---\n:arrow_right: [${round.title}](${round.link}).`);
+                await this.broadcast(player =>
+                    `Please vote either publically with \`@bot vote <estimate>\` or in private using just a number. ` +
+                    `**Voting here is ${player ? "private" : "public"}.**`
+                );
+                return;
             }
 
             case "VOTE_COUNTED": {
@@ -341,7 +350,7 @@ export default class Poker extends Bot {
                     await this.sendMessageToPerson(person, `Thanks ${this.formatMention(person)}, your vote of ${vote.value} has been counted.`);
                     await this.broadcast(`:ballot_box_with_check: ${person.firstName} has voted.`, [person]);
                 } else {
-                    await this.broadcast(`:ballot_box_with_check: ${person.firstName} has voted ${vote.value}.`);
+                    await this.broadcast(`:ballot_box_with_check: ${person.firstName} has voted ${formatVote(vote.value)}.`);
                 }
 
                 return;
@@ -349,7 +358,14 @@ export default class Poker extends Bot {
 
             case "VOTE_UPDATED": {
                 const { person, vote, direct } = mutation.payload;
-                return this.sendMessageToPerson(person, `Thanks, your vote has been updated to ${formatDuration(vote.value)} (${vote.value}).`);
+                if(direct) {
+                    await this.sendMessageToPerson(person, `Thanks, your vote has been updated to ${formatVote(vote.value)}.`);
+                    await this.broadcast(`:ballot_box_with_check: ${person.firstName} has updated their vote.`, [person]);
+                } else {
+                    await this.broadcast(`:ballot_box_with_check: ${person.firstName} has updated their vote to ${vote.value}.`);
+                }
+
+                return;
             }
 
             case "ALL_VOTED": {
@@ -362,8 +378,8 @@ export default class Poker extends Bot {
                     return Object.assign(table, { [person.firstName]: vote.value });
                 }, {});
 
-                await this.broadcast(`:high_brightness: Thank you, everyone has voted. Average vote: ${formatDuration(averageVote)}\n\n${formatMarkdownTable([table])}`);
-                await this.sendMessageToPerson(this.state.moderator, `Okay moderator, please submit your estimate. Average vote: ${averageVote}`);
+                await this.broadcast(`:high_brightness: Thank you, everyone has voted. Average vote: ${formatVote(averageVote)}\n\n${formatMarkdownTable([table])}. Awaiting moderator to estimate task.`);
+                await this.sendMessageToPerson(this.state.moderator, `Okay moderator, please submit your estimate. (\`estimate 10\` to estimate 10 hours)`);
                 return;
             }
 
@@ -381,10 +397,10 @@ export default class Poker extends Bot {
     async broadcast(message, omit = []) {
         await Promise.all(
             differenceBy(this.state.players, omit, player => player.id)
-                .map(player => this.sendMessageToPerson(player, message))
+                .map(player => this.sendMessageToPerson(player, typeof message === "function" ? message(player) : message))
         );
 
-        await this.sendMessageToRoom(this.state.room, message);
+        await this.sendMessageToRoom(this.state.room, typeof message === "function" ? message() : message);
     }
 
     async plan(output, message) {
@@ -394,15 +410,16 @@ export default class Poker extends Bot {
             return this.reply(message, "Please supply a tasklist.");
         }
 
+        const tasklist = parseTasklist(content);
+
         // Attempt to validate the tasklist
-        if(!content.match(/teamwork.com/)) {
-            return this.reply(message, "Uh oh, I don't recognize that tasklist!");
+        if(!tasklist) {
+            return this.reply(message, "Uh oh, I don't recognize that tasklist! Example: `https://1486461376533.teamwork.com/index.cfm#tasklists/457357`");
         }
 
         // Grab the tasks from the API and create the rounds
         return this.dispatch("PLAN", {
-            tasklist: content,
-            tasks: await Teamwork.getTasks()
+            tasklist, tasks: await this.getTasks(tasklist)
         });
     }
 
@@ -453,10 +470,14 @@ export default class Poker extends Bot {
     showStatus(message) {
         return this.reply(message, "Showing status.");
     }
+
+    async getTasks(api, tasklist) {
+        console.log("CALLED HERE")
+    }
 }
 
 class Vote extends Bot {
-    static VOTE_EXPR = /^\s*(\d+(?:\.\d+)?|coffee|infinity)/;
+    static VOTE_EXPR = /^\s*(\d+(?:\.\d+)?)/;
 
     render() {
         // Votes can one of the following
@@ -479,23 +500,5 @@ class Vote extends Bot {
 
     toString() {
         return `votes one of ${Vote.VOTE_EXPR.toString()}`
-    }
-}
-
-export class Teamwork {
-    static async getTasks() {
-        return [{
-            title: "Example task",
-            id: 1,
-            link: "http://foobar.com"
-        }, {
-            title: "Example task 2",
-            id: 2,
-            link: "http://foobar.com"
-        }, {
-            title: "Example task 3",
-            id: 3,
-            link: "http://foobar.com"
-        }];
     }
 }

@@ -35,3 +35,20 @@ export function formatDuration(duration) {
 
     return output.join(" and ");
 }
+
+export function formatVote(vote) {
+    return `${formatDuration(vote)} (${vote})`;
+}
+
+export function parseTasklist(tasklist) {
+    const match = tasklist.match(/(?:https?:\/\/)?([a-zA-Z\-_0-9]+)\.teamwork.com\/(?:index.cfm#)?\/?tasklists\/(\d+)/)
+
+    if(match) {
+        return {
+            installation: match[1],
+            tasklist: parseInt(match[2], 10)
+        };
+    } else {
+        return null;
+    }
+}
