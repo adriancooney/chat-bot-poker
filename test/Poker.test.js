@@ -142,11 +142,9 @@ describe("Poker", () => {
         it("should allow a player to vote privately", async () => {
             await chat.dispatchMessageToPerson(chat.user, "10", player);
             await chat.expectMessageInRoom(room, /has voted/);
-            await chat.expectMessageToPerson(player, /your vote of 10 has been counted/);
 
             await Promise.all(
-                people.filter(person => person.id !== player.id)
-                    .map(person => chat.expectMessageToPerson(person, new RegExp(`${player.firstName} has voted\.$`, "i")))
+                people.map(person => chat.expectMessageToPerson(person, new RegExp(`${player.firstName} has voted\.$`, "i")))
             );
 
             const votes = bot.state.rounds.pending[0].votes;
@@ -192,7 +190,7 @@ describe("Poker", () => {
 
         it("should allow a moderator to manually estimate", async () => {
             await chat.dispatchMessageToPerson(chat.user, "estimate 10", moderator);
-            await chat.expectMessageInRoom(room, /moderator picked final estimate of 10/i, 2);
+            await chat.expectMessageInRoom(room, /moderator picked final estimate/i, 2);
             expect(bot.state.rounds.completed.length).to.equal(1);
         });
 
@@ -253,7 +251,7 @@ describe("Poker", () => {
 
         it("should accept valid input and move to the next round", async () => {
             await chat.dispatchMessageToPerson(chat.user, `estimate 1.5`, moderator);
-            await chat.expectMessageInRoom(room, /moderator picked final estimate of 1 hour and 30 minutes/i, 2);
+            await chat.expectMessageInRoom(room, /moderator picked final estimate/i, 2);
             await chat.expectMessageInRoom(room, /please vote/i);
 
             const rounds = bot.state.rounds;

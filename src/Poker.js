@@ -2,7 +2,8 @@ import qs from "qs";
 import {
     unionBy,
     differenceBy,
-    meanBy
+    meanBy,
+    sum
 } from "lodash";
 import {
     Bot,
@@ -166,7 +167,7 @@ export default class Poker extends Bot {
                     ...state,
                     status: "ready",
                     timestamps: {
-                        startTime: Date.now()
+                        start: Date.now()
                     },
                     rounds: {
                         pending: tasks.map(task => ({
@@ -368,7 +369,7 @@ export default class Poker extends Bot {
                 const currentUser = await this.getCurrentUser();
 
                 if(vote) {
-                    await this.broadcast(`:mega: Moderator picked final estimate of ${formatVote(vote)}.`);
+                    await this.broadcast(`:mega: Moderator picked final estimate of **${formatVote(vote)}**.`);
                 }
 
                 const moderator = nextState.players.find(player => player.id === nextState.moderator.id);
@@ -377,21 +378,37 @@ export default class Poker extends Bot {
                 const totalCompleted = nextState.rounds.completed.length;
                 const totalTasks = totalPending + totalSkipped + totalCompleted;
 
-                await this.broadcast(
-                    `---\n:arrow_right: #${totalCompleted + 1} [${round.task.title}](${round.task.link}) (${totalCompleted} of ${totalPending + totalCompleted} tasks completed${totalSkipped > 0 ? `, ${totalSkipped} skipped` : ""})`
-                );
+                let output = `---\n:arrow_right: #${totalCompleted + 1} `;
+
+                if(round.task["parent-task"]) {
+                    const parentTask = round.task["parent-task"];
+                    output += `${parentTask.content} -> `;
+                }
+
+                output += `[${round.task.title}](${round.task.link}) (${totalCompleted} of ${totalPending + totalCompleted} tasks completed${totalSkipped > 0 ? `, ${totalSkipped} skipped` : ""})`;
+
+                await this.broadcast(output);
 
                 await this.broadcast(player => {
                     const isModerator = player && player.id === nextState.moderator.id;
-                    let output = `:mega: Please vote by ${!player ? `sending \`${this.formatMention(currentUser)} vote <estimate>\` or in a private message.\n` : "sending just a number estimate e.g. `1.5` for 1 hour and 30 minutes.\n"}`;
+                    let output = `:mega: Please vote by ${!player ? `sending \`${this.formatMention(currentUser)} vote <estimate>\` or in a private message.` : "sending just a number estimate."}\n`;
 
+                    let skippable = false;
                     if(round.task["estimated-minutes"]) {
-                        output += `:warning: This task already has an estimate of ${formatVote(round.task["estimated-minutes"]/60)}. `;
+                        output += `:warning: This task already has an estimate of ${formatVote(round.task["estimated-minutes"]/60)}.\n`;
+                        skippable = true;
+                    }
 
+                    if(round.task["has-predecessors"]) {
+                        output += `:warning: This is a parent task of ${round.task["has-predecessors"]} subtasks.\n`;
+                        skippable = true;
+                    }
+
+                    if(skippable) {
                         if(isModerator) {
-                            output += `You, as moderator, can skip the task by sending \`skip\`.\n`;
+                            output += `:guardsman: You, as moderator, can skip the task by sending \`skip\`.\n`;
                         } else {
-                            output += `The moderator can skip the task by \`${this.formatMention(currentUser)} skip\`.\n`;
+                            output += `:guardsman: The moderator can skip the task by \`${this.formatMention(currentUser)} skip\`.\n`;
                         }
                     }
 
@@ -409,8 +426,7 @@ export default class Poker extends Bot {
                 const { person, vote, direct } = mutation.payload;
 
                 if(direct) {
-                    await this.sendMessageToPerson(person, `Thanks ${this.formatMention(person)}, your vote of ${vote.value} has been counted.`);
-                    await this.broadcast(`:ballot_box_with_check: ${person.firstName} has voted.`, [person]);
+                    await this.broadcast(`:ballot_box_with_check: ${person.firstName} has voted.`);
                 } else {
                     await this.broadcast(`:ballot_box_with_check: ${person.firstName} has voted ${formatVote(vote.value)}.`);
                 }
@@ -453,10 +469,14 @@ export default class Poker extends Bot {
 
             case "GAME_COMPLETE": {
                 let output = `:mega: Sprint planning complete: [${nextState.tasklist.title}](${nextState.tasklist.link})\n`;
+                output += `:hourglass: The planning took **${formatVote((Date.now() - nextState.timestamps.start) / (60 * 60 * 1000))}**.\n`;
 
                 if(nextState.rounds.completed.length) {
+                    const totalHours = sum(nextState.rounds.completed.map(round => round.finalVote));
+                    output += `:clock2: The sprint is **${formatVote(totalHours)}** in total.\n`;
+
                     const headers = ["title", ...nextState.players.map(person => person.firstName), "finalVote"];
-                    const completedTable = formatMarkdownTable(nextState.rounds.completed.map(round => {
+                    const rows = nextState.rounds.completed.map(round => {
                         const votes = nextState.players.reduce((votes, person) => {
                             const vote = round.votes.find(vote => vote.person === person.id);
 
@@ -469,7 +489,9 @@ export default class Poker extends Bot {
                             title: `[${round.task.title}](${round.task.link})`,
                             finalVote: round.finalVote
                         });
-                    }), headers, {
+                    });
+
+                    const completedTable = formatMarkdownTable(rows, headers, {
                         "title": "Title",
                         "finalVote": "Final Vote"
                     });
