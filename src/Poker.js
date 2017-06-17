@@ -41,23 +41,6 @@ export default class Poker extends Bot {
         };
     }
 
-    async onMount() {
-        const currentUser = await this.getCurrentUser();
-
-        return this.broadcast(player => {
-            let output = `:mega: Welcome to Sprint Planning Poker!\n`
-
-            if(player && player.id === this.state.moderator.id) {
-                output += `:guardsman: ${player.firstName}, you are the moderator. To pick a tasklist to plan, send \`plan <tasklist url>\`.\n`;
-            } else {
-                output += `:guardsman: ${this.formatMention(this.state.moderator)}, is the moderator.\n`;
-                output += `:mega: We're waiting for the moderator to pick a tasklist to plan (\`${this.formatMention(currentUser)} plan <tasklist url>\`).\n`;
-            }
-
-            return output;
-        });
-    }
-
     render() {
         return (
             <Any>
@@ -109,14 +92,16 @@ export default class Poker extends Bot {
 
         return (
             <Any>
-                <From room={this.state.room} user={this.state.moderator}>
-                    <Mention>
-                        { inputs}
-                    </Mention>
+                <From user={this.state.moderator}>
+                    <From room={this.state.room}>
+                        <Mention>
+                            { inputs}
+                        </Mention>
+                    </From>
+                    <Private>
+                        { inputs }
+                    </Private>
                 </From>
-                <Private>
-                    { inputs }
-                </Private>
             </Any>
         );
     }
@@ -130,11 +115,13 @@ export default class Poker extends Bot {
             // In public, they have to prefix it with the command `vote`
             case "round": {
                 let voter = <Vote onVote={this.handleVote.bind(this)} />;
+
                 publicInputs.push(
                     <Command name="vote">
                         { voter }
                     </Command>
                 );
+
                 privateInputs.push(voter);
 
                 break;
@@ -345,6 +332,23 @@ export default class Poker extends Bot {
     }
 
     async transition(action, state, nextState, mutation) {
+        if(!action && !state) {
+            const currentUser = await this.getCurrentUser();
+
+            return this.broadcast(player => {
+                let output = `:mega: Welcome to Sprint Planning Poker!\n`
+
+                if(player && player.id === this.state.moderator.id) {
+                    output += `:guardsman: ${player.firstName}, you are the moderator. To pick a tasklist to plan, send \`plan <tasklist url>\`.\n`;
+                } else {
+                    output += `:guardsman: ${this.formatMention(this.state.moderator)}, is the moderator.\n`;
+                    output += `:mega: We're waiting for the moderator to pick a tasklist to plan (\`${this.formatMention(currentUser)} plan <tasklist url>\`).\n`;
+                }
+
+                return output;
+            });
+        }
+
         switch(mutation.type) {
             case "NEW_GAME": {
                 const { tasklist, tasks } = mutation.payload;
@@ -510,7 +514,7 @@ export default class Poker extends Bot {
                 await this.broadcast(output);
 
                 if(this.props.onComplete) {
-                    return this.props.onComplete(this.state);
+                    await this.props.onComplete(this.state);
                 }
             }
         }

@@ -36,7 +36,7 @@ export default class Dealer extends Bot {
     }
 
     onComplete(id, game) {
-        this.setState({
+        return this.setState({
             bots: this.state.bots.filter(bot => bot.id !== id)
         });
     }
@@ -74,7 +74,7 @@ export default class Dealer extends Bot {
         const id = `${Math.random()}-${Date.now()}`;
 
         // Add the bot to the state
-        this.setState({
+        await this.setState({
             bots: this.state.bots.concat({
                 id,
                 room,

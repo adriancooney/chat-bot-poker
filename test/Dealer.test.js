@@ -34,7 +34,7 @@ describe("Dealer", () => {
             people = players.slice(1);
             player = people[1];
 
-            bot = Rule.mount(<Dealer api={api} />, {
+            bot = await Rule.mount(<Dealer api={api} />, {
                 service: chat,
                 user: chat.user
             });
@@ -81,7 +81,7 @@ describe("Dealer", () => {
         await chat.expectMessageInRoom(pokerRoom2, /waiting for the moderator to start/i);
 
         // Remove one of the bots
-        bot.setState({
+        await bot.setState({
             bots: bot.state.bots.slice(1)
         });
 

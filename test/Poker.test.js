@@ -34,7 +34,7 @@ describe("Poker", () => {
             people = players.slice(1);
             player = people[1];
 
-            bot = Rule.mount(<Poker api={api} moderator={moderator} room={room} participants={people} />, {
+            bot = await Rule.mount(<Poker api={api} moderator={moderator} room={room} participants={people} />, {
                 service: chat,
                 user: chat.user
             });
