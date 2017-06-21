@@ -2,14 +2,15 @@
   "name": "chat-bot-poker",
   "version": "0.1.0",
   "description": "Sprint planning poker.",
-  "main": "src/index.js",
+  "main": "build/index.js",
   "scripts": {
     "test": "mocha --compilers js:babel-register",
     "build": "babel src -d build/"
   },
   "dependencies": {
     "moment": "^2.18.1",
-    "qs": "^6.4.0"
+    "qs": "^6.4.0",
+    "chat-bot": "*"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
