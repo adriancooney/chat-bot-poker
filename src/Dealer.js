@@ -20,7 +20,7 @@ export default class Dealer extends Bot {
     render() {
         const bots = this.state.bots.map((props, i) => {
             return (
-                <Poker key={props.id} api={this.props.api} {...props} />
+                <Poker key={props.id} api={this.props.api} onComplete={this.onComplete.bind(this, props.id)} {...props} />
             )
         });
 
@@ -30,7 +30,6 @@ export default class Dealer extends Bot {
                 <Mention>
                     <Command name="poker" handler={this.createGame.bind(this)} />
                 </Mention>
-                <Debug name="dealer" />
             </Any>
         )
     }
@@ -79,8 +78,7 @@ export default class Dealer extends Bot {
                 id,
                 room,
                 participants,
-                moderator,
-                onComplete: this.onComplete.bind(this, id)
+                moderator
             })
         });
     }

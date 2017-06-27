@@ -35,8 +35,7 @@ describe("Dealer", () => {
             player = people[1];
 
             bot = await Rule.mount(<Dealer api={api} />, {
-                service: chat,
-                user: chat.user
+                service: chat
             });
 
             chat.connect(bot);
