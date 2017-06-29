@@ -10,7 +10,9 @@ describe("Dealer", () => {
     let chat, room, people, players, moderator, player, bot;
 
     before(() => {
-        chat = new TestService();
+        chat = new TestService({
+            debug: false
+        });
 
         return chat.init().then(async () => {
             // Add some initial data
@@ -44,7 +46,6 @@ describe("Dealer", () => {
 
     beforeEach(() => {
         chat.pushState();
-        bot.pushState();
     });
 
     it("should require at least one other person to create a new game", async () => {
@@ -112,6 +113,5 @@ describe("Dealer", () => {
 
     afterEach(() => {
         chat.popState();
-        bot.popState();
     });
 });

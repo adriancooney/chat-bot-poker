@@ -10,7 +10,9 @@ describe("Poker", () => {
     let chat, room, people, players, moderator, player, bot;
 
     before(() => {
-        chat = new TestService();
+        chat = new TestService({
+            debug: false
+        });
 
         return chat.init().then(async () => {
             // Add some initial data
@@ -45,12 +47,10 @@ describe("Poker", () => {
 
     beforeEach(() => {
         chat.pushState();
-        bot.pushState();
     });
 
-    afterEach(() => {
-        chat.popState();
-        bot.popState();
+    afterEach(async () => {
+        await chat.popState();
     });
 
     describe("initial state", () => {
@@ -90,7 +90,6 @@ describe("Poker", () => {
     describe("ready to start", () => {
         before(async () => {
             chat.pushState();
-            bot.pushState();
 
             await chat.dispatchMessageToRoom(room, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
         });
@@ -112,15 +111,13 @@ describe("Poker", () => {
         });
 
         after(async () => {
-            chat.popState();
-            bot.popState();
+            await chat.popState();
         });
     });
 
     describe("round", () => {
         before(async () => {
             chat.pushState();
-            bot.pushState();
 
             await chat.dispatchMessageToRoom(room, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
             await chat.dispatchMessageToRoom(room, "@bot start", moderator);
@@ -221,15 +218,13 @@ describe("Poker", () => {
         });
 
         after(async () => {
-            chat.popState();
-            bot.popState();
+            await chat.popState();
         });
     });
 
     describe("moderation", () => {
         before(async () => {
             chat.pushState();
-            bot.pushState();
 
             await chat.dispatchMessageToRoom(room, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
             await chat.dispatchMessageToRoom(room, "@bot start", moderator);
@@ -264,8 +259,7 @@ describe("Poker", () => {
         });
 
         after(async () => {
-            chat.popState();
-            bot.popState();
+            await chat.popState();
         });
     });
 });
