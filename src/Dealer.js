@@ -6,7 +6,7 @@ import {
     Any,
     Debug
 } from "chat-bot";
-import { without } from "lodash";
+import { without, uniq } from "lodash";
 import Poker from "./Poker";
 
 export default class Dealer extends Bot {
@@ -62,7 +62,7 @@ export default class Dealer extends Bot {
         // Get the users from the message's mentions
         try {
             participants = await Promise.all(
-                input.mentions
+                uniq(input.mentions)
                     .filter(({ handle }) => handle !== currentUser.handle)
                     .map(({ handle }) => this.getPersonByHandle(handle))
             );
