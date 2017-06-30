@@ -11,7 +11,7 @@ describe("Poker", () => {
 
     before(() => {
         chat = new TestService({
-            debug: false
+            debug: true
         });
 
         return chat.init().then(async () => {
@@ -256,6 +256,30 @@ describe("Poker", () => {
             expect(completedRound.finalVote).to.equal(1.5);
 
             expect(bot.state).to.have.property("status", "round");
+        });
+
+        after(async () => {
+            await chat.popState();
+        });
+    });
+
+    describe("leaving", () => {
+        before(async () => {
+            chat.pushState();
+
+            await chat.dispatchMessageToRoom(room, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
+            await chat.dispatchMessageToRoom(room, "@bot start", moderator);
+        });
+
+        it("should let a player leave", async () => {
+            await chat.dispatchMessageToRoom(room, `@bot exit`, player);
+            await chat.expectMessageInRoom(room, /has left/, 1);
+            expect(bot.state.players).to.not.include(player);
+        });
+
+        it("should let a moderator leave", async () => {
+            await chat.dispatchMessageToRoom(room, `@bot exit`, moderator);
+            await chat.expectMessageInRoom(room, /moderator has left sprint planning/i);
         });
 
         after(async () => {

@@ -11,7 +11,7 @@ describe("Dealer", () => {
 
     before(() => {
         chat = new TestService({
-            debug: false
+            debug: true
         });
 
         return chat.init().then(async () => {
@@ -70,14 +70,19 @@ describe("Dealer", () => {
     });
 
     it("should handle multiple games", async () => {
-        await chat.dispatchMessageToRoom(room, `@bot poker ${people.map(person => chat.formatMention(person)).join(", ")}`, moderator);
-        const pokerRoom1 = (await chat.getAllRooms()).find(room => room.title.match(/sprint planning poker/i));
-        await chat.dispatchMessageToRoom(room, `@bot poker ${people.map(person => chat.formatMention(person)).join(", ")}`, moderator);
-        const pokerRoom2 = (await chat.getAllRooms()).find(room => room !== pokerRoom1 && room.title.match(/sprint planning poker/i));
+        const partition = Math.floor(people.length/2);
+        const people1 = people.slice(0, partition);
+        const people2 = people.slice(partition);
+        const moderator2 = people2.shift();
+
+        await chat.dispatchMessageToRoom(room, `@bot poker ${people1.map(person => chat.formatMention(person)).join(", ")}`, moderator);
+        const pokerRoom1 = bot.state.bots[0].room;
+        await chat.dispatchMessageToRoom(room, `@bot poker ${people2.map(person => chat.formatMention(person)).join(", ")}`, moderator2);
+        const pokerRoom2 = bot.state.bots[1].room;
 
         await chat.dispatchMessageToRoom(pokerRoom1, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
         await chat.expectMessageInRoom(pokerRoom1, /waiting for the moderator to start/i);
-        await chat.dispatchMessageToRoom(pokerRoom2, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
+        await chat.dispatchMessageToRoom(pokerRoom2, `@bot plan ${EXAMPLE_TASKLIST}`, moderator2);
         await chat.expectMessageInRoom(pokerRoom2, /waiting for the moderator to start/i);
 
         // Remove one of the bots
@@ -88,14 +93,14 @@ describe("Dealer", () => {
         await chat.dispatchMessageToRoom(pokerRoom1, "@bot start", moderator);
         await chat.expectMessageInRoom(pokerRoom1, /@bot start/);
 
-        await chat.dispatchMessageToRoom(pokerRoom2, "@bot start", moderator);
+        await chat.dispatchMessageToRoom(pokerRoom2, "@bot start", moderator2);
         await chat.expectMessageInRoom(pokerRoom2, /please vote/i);
     });
 
     it("should remove a game when it completes", async () => {
         await chat.dispatchMessageToRoom(room, `@bot poker ${people.map(person => chat.formatMention(person)).join(", ")}`, moderator);
 
-        const pokerRoom = (await chat.getAllRooms()).find(room => room.title.match(/sprint planning poker/i));
+        const pokerRoom = bot.state.bots[0].room;
         await chat.dispatchMessageToRoom(pokerRoom, `@bot plan ${EXAMPLE_TASKLIST}`, moderator);
         await chat.dispatchMessageToRoom(pokerRoom, `@bot start`, moderator);
 
@@ -109,6 +114,28 @@ describe("Dealer", () => {
         }, Promise.resolve());
 
         expect(bot.state.bots).to.have.property("length", 0);
+    });
+
+    it("should not create a game where users are already in another game", async () => {
+        await chat.dispatchMessageToRoom(room, `@bot poker ${people.map(person => chat.formatMention(person)).join(", ")}`, moderator);
+        const newRoom = bot.state.bots[0].room;
+        await chat.dispatchMessageToRoom(room, `@bot poker ${chat.formatMention(player)}`, moderator);
+        await chat.expectMessageInRoom(newRoom, /if you'd like to leave this game/);
+        await chat.expectMessageInRoom(room, /are already in sprint planning/);
+    });
+
+    it("should remove a game when the moderator leaves", async () => {
+        await chat.dispatchMessageToRoom(room, `@bot poker ${people.map(person => chat.formatMention(person)).join(", ")}`, moderator);
+        const pokerRoom = bot.state.bots[0].room;
+        await chat.dispatchMessageToRoom(pokerRoom, `@bot exit`, moderator);
+        expect(bot.state.bots.length).to.equal(0);
+    });
+
+    it("should update a game when a player leaves", async () => {
+        await chat.dispatchMessageToRoom(room, `@bot poker ${people.map(person => chat.formatMention(person)).join(", ")}`, moderator);
+        const pokerRoom = bot.state.bots[0].room;
+        await chat.dispatchMessageToRoom(pokerRoom, `@bot exit`, player);
+        expect(bot.state.bots[0].participants).to.not.include(player);
     });
 
     afterEach(() => {

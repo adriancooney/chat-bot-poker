@@ -6,6 +6,7 @@ import {
     Any,
     Debug
 } from "chat-bot";
+import { without } from "lodash";
 import Poker from "./Poker";
 
 export default class Dealer extends Bot {
@@ -20,7 +21,11 @@ export default class Dealer extends Bot {
     render() {
         const bots = this.state.bots.map((props, i) => {
             return (
-                <Poker key={props.id} api={this.props.api} onComplete={this.onComplete.bind(this, props.id)} {...props} />
+                <Poker key={props.id}
+                    api={this.props.api}
+                    onComplete={this.onComplete.bind(this, props.id)}
+                    onPlayerLeave={this.onPlayerLeave.bind(this, props.id)}
+                    {...props} />
             )
         });
 
@@ -37,6 +42,15 @@ export default class Dealer extends Bot {
     onComplete(id, game) {
         return this.setState({
             bots: this.state.bots.filter(bot => bot.id !== id)
+        });
+    }
+
+    onPlayerLeave(id, player) {
+        return this.setState({
+            bots: this.state.bots.map(bot => ({
+                ...bot,
+                participants: without(bot.participants, player)
+            }))
         });
     }
 
@@ -65,6 +79,14 @@ export default class Dealer extends Bot {
         }
 
         const moderator = input.author;
+        const people = participants.concat(moderator);
+        const currentGames = people.map(person => ({ person, game: this.getGameForPerson(person) })).filter(({ game }) => game);
+
+        if(currentGames.length) {
+            await Promise.all(currentGames.map(({ game, person }) => this.sendMessageToRoom(game.room, `:warning: ${this.formatMention(person)}, if you'd like to leave this game, send \`@bot exit\`.`)));
+            return this.reply(input, `I cannot start a new game. ${currentGames.map(({ person }) => this.formatMention(person)).join(", ")} are already in sprint planning.`);
+        }
+
         const room = await this.createRoom({
             title: "Sprint planning poker",
             people: participants.concat(moderator)
@@ -81,5 +103,9 @@ export default class Dealer extends Bot {
                 moderator
             })
         });
+    }
+
+    getGameForPerson(person) {
+        return this.state.bots.find(bot => bot.moderator === person || bot.participants.includes(person));
     }
 }

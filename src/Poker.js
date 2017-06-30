@@ -3,7 +3,8 @@ import {
     unionBy,
     differenceBy,
     meanBy,
-    sum
+    sum,
+    without
 } from "lodash";
 import {
     Bot,
@@ -49,6 +50,7 @@ export default class Poker extends Bot {
                 <From room={this.props.room}>
                     <Mention>
                         <Command name="status" handler={this.showStatus.bind(this)} />
+                        <Command name="exit" handler={this.exitPlayer.bind(this)} />
                     </Mention>
                 </From>
             </Any>
@@ -326,6 +328,26 @@ export default class Poker extends Bot {
                 }
             }
 
+            case "REMOVE_PLAYER": {
+                const player = action.payload.player;
+
+                if(player === state.moderator) {
+                    transition("MODERATOR_LEFT");
+
+                    return {
+                        cancelled: true,
+                        ...state
+                    };
+                }
+
+                transition("PLAYER_LEFT", { player });
+
+                return {
+                    ...state,
+                    players: without(state.players, player)
+                };
+            }
+
             default:
                 return state;
         }
@@ -516,6 +538,30 @@ export default class Poker extends Bot {
                 if(this.props.onComplete) {
                     await this.props.onComplete(this.state);
                 }
+
+                return;
+            }
+
+            case "MODERATOR_LEFT": {
+                await this.broadcast(":warning: Moderator has left sprint planning, cancelling! Sprint planning over.");
+
+                if(this.props.onComplete) {
+                    await this.props.onComplete(this.state);
+                }
+
+                return;
+            }
+
+            case "PLAYER_LEFT": {
+                const { player } = mutation.payload;
+                await this.broadcast(`:warning: ${player.firstName} has left sprint planning.`);
+                await this.broadcast(`:warning: ${player.firstName} you're technically out of the game (you cannot participate) but I currently don't support removing people from rooms. Please leave the room.`);
+
+                if(this.props.onPlayerLeave) {
+                    await this.props.onPlayerLeave(player);
+                }
+
+                return;
             }
         }
     }
@@ -573,6 +619,12 @@ export default class Poker extends Bot {
 
     skip() {
         return this.dispatch("SKIP");
+    }
+
+    exitPlayer(input) {
+        return this.dispatch("REMOVE_PLAYER", {
+            player: input.author
+        });
     }
 
     pass(input) {
