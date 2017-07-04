@@ -1,5 +1,10 @@
 import assert from "assert";
-import { formatMarkdownTable, formatDuration, parseTasklist } from "../src/util";
+import {
+    formatMarkdownTable,
+    formatDuration,
+    parseTasklist,
+    formatList
+} from "../src/util";
 
 describe("util", () => {
     describe("formatMarkdownTable", () => {
@@ -41,6 +46,20 @@ describe("util", () => {
                 installation: "1486461376533",
                 id: 457357
             });
+        });
+    });
+
+    describe("formatList", () => {
+        it("should format a list of length one", () => {
+            assert.equal(formatList(["foo"]), "foo");
+        });
+
+        it("should format list of length two", () => {
+           assert.equal(formatList(["foo", "bar"]), "foo and bar");
+        });
+
+        it("should format list of length greater than two", () => {
+           assert.equal(formatList(["foo", "bar", "boot"]), "foo, bar and boot");
         });
     });
 });

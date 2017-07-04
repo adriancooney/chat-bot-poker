@@ -20,7 +20,8 @@ import {
 import {
     formatMarkdownTable,
     formatVote,
-    parseTasklist
+    parseTasklist,
+    formatList
 } from "./util";
 
 export default class Poker extends Bot {
@@ -475,7 +476,7 @@ export default class Poker extends Bot {
             case "ALL_VOTED": {
                 const round = nextState.rounds.pending[0];
                 const votes = round.votes;
-                const averageVote = meanBy(votes, "value");
+                const averageVote = meanBy(votes.filter(vote => !isNaN(vote.value)), "value");
 
                 const table = votes.reduce((table, vote) => {
                     const person = nextState.players.find(person => person.id === vote.person);
@@ -483,6 +484,13 @@ export default class Poker extends Bot {
                 }, {});
 
                 await this.broadcast(`:high_brightness: Thank you, everyone has voted. Average vote: ${formatVote(averageVote)}\n\n${formatMarkdownTable([table])}\n\n:mega: Awaiting moderator to estimate task.`);
+
+                const coffees = votes.filter(vote => vote.value === "coffee");
+
+                if(coffees.length) {
+                    await this.broadcast(`:coffee: ${formatList(coffees.map(vote => nextState.players.find(person => person.id === vote.person).firstName))} feel${coffees.length > 1 ? "s" : ""} it's time for a coffee break.`);
+                }
+
                 await this.sendMessageToPerson(this.state.moderator, `Okay moderator, please submit your estimate. (\`estimate 10\` to estimate 10 hours)`);
                 return;
             }
@@ -694,7 +702,7 @@ export default class Poker extends Bot {
 }
 
 class Vote extends Bot {
-    static VOTE_EXPR = /^\s*(\d+(?:\.\d+)?)/;
+    static VOTE_EXPR = /^\s*((?:\d+(?:\.\d+)?)|coffee|infinity)/;
 
     render() {
         // Votes can one of the following

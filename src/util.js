@@ -52,3 +52,13 @@ export function parseTasklist(tasklist) {
         return null;
     }
 }
+
+export function formatList(list) {
+    let output = list[list.length - 1];
+
+    if(list.length > 1) {
+        output = list.slice(0, -1).join(", ") + " and " + output;
+    }
+
+    return output;
+}

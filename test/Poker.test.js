@@ -175,6 +175,11 @@ describe("Poker", () => {
             expect(votes.length).to.equal(2);
         });
 
+        it("should allow other players to vote 'coffee'", async () => {
+            await Promise.all(players.map((player, i) => chat.dispatchMessageToPerson(chat.user, i > players.length / 2 ? `${i}` : "coffee", player)));
+            await chat.expectMessageInRoom(room, /feels? it's time for a coffee break/);
+        });
+
         it("should close the round after all players have voted", async () => {
             const votes = players.map((_, i) => i);
             await Promise.all(votes.map((vote, i) => chat.dispatchMessageToPerson(chat.user, `${vote}`, players[i])));
