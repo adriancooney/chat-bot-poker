@@ -2,9 +2,9 @@ import qs from "qs";
 import {
     unionBy,
     differenceBy,
-    meanBy,
-    minBy,
-    maxBy,
+    mean,
+    min,
+    max,
     sum,
     without
 } from "lodash";
@@ -478,21 +478,19 @@ export default class Poker extends Bot {
             case "ALL_VOTED": {
                 const round = nextState.rounds.pending[0];
                 const votes = round.votes;
-                const numericalVotes = round.votes.filter(vote => !isNaN(vote.value));
-                const averageVote = meanBy(numericalVotes, "value");
-                const maxVote = maxBy(numericalVotes, "value");
-                const minVote = minBy(numericalVotes, "value");
+                const numericalVotes = votes.filter(vote => !isNaN(vote.value)).map(vote => vote.value);
+                const averageVote = mean(numericalVotes);
+                const maxVote = max(numericalVotes);
+                const minVote = min(numericalVotes);
 
                 // PERT value
                 const suggestedVote = (minVote + 4 * averageVote + maxVote) / 6;
-                // vote deviation
                 const voteDeviation = (maxVote - minVote) / 6;
 
                 const table = votes.reduce((table, vote) => {
                     const person = nextState.players.find(person => person.id === vote.person);
                     return Object.assign(table, { [person.firstName]: vote.value });
                 }, {});
-
 
                 await this.broadcast(`:high_brightness: Thank you, everyone has voted. Suggested estimate: ${formatVote(suggestedVote)} (can take up to ${formatVote(voteDeviation)} more, based on vote deviation)\n\n${formatMarkdownTable([table])}\n\n:mega: Awaiting moderator to estimate task.`);
 
