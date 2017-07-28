@@ -27,7 +27,7 @@ import {
 } from "./util";
 
 /** @type {Number} The length of time between nudging people who are still voting. */
-const NUDGE_TIMEOUT = 30000;
+const NUDGE_TIMEOUT = 45000;
 
 export default class Poker extends Bot {
     constructor(props, context) {
