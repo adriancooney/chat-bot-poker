@@ -21,7 +21,7 @@ export default class Dealer extends Bot {
     render() {
         const bots = this.state.bots.map((props, i) => {
             return (
-                <Poker key={props.id}
+                <Poker nudge key={props.id}
                     api={this.props.api}
                     onComplete={this.onComplete.bind(this, props.id)}
                     onPlayerLeave={this.onPlayerLeave.bind(this, props.id)}
