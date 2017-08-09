@@ -609,7 +609,7 @@ export default class Poker extends Bot {
     async nudgeVoters() {
         // Find the players still voting
         const currentRound = this.state.rounds.pending[0];
-        const votedPlayers = currentRound.votes.map(({ person }) => this.state.people.find(person => person.id === person));
+        const votedPlayers = currentRound.votes.map(({ person }) => this.state.players.find(person => person.id === person));
         const votingPlayers = differenceBy(this.state.players, votedPlayers, "id");
 
         await Promise.all(
