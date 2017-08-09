@@ -2,6 +2,7 @@ import assert from "assert";
 import {
     formatMarkdownTable,
     formatDuration,
+    formatVote,
     parseTasklist,
     formatList
 } from "../src/util";
@@ -27,6 +28,13 @@ describe("util", () => {
     describe("formatDuration", () => {
         it("should correctly format a duration", () => {
             assert.equal("1 hour and 5 minutes", formatDuration(1 + (5/60)));
+        });
+    });
+
+    describe("formatVote", () => {
+        it("should correctly format the vote", () => {
+            assert.equal("1 hour and 15 minutes (1.3)", formatVote(1.25));
+            assert.equal("coffee", formatVote("coffee"));
         });
     });
 

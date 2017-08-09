@@ -37,7 +37,7 @@ export function formatDuration(duration) {
 }
 
 export function formatVote(vote) {
-    return `${formatDuration(vote)} (${vote.toFixed(vote % 1 > 0 ? 1 : 0)})`;
+    return typeof vote === "number" ? `${formatDuration(vote)} (${vote.toFixed(vote % 1 > 0 ? 1 : 0)})` : vote;
 }
 
 export function parseTasklist(tasklist) {
