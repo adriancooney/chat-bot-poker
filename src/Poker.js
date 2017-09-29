@@ -27,9 +27,6 @@ import {
     formatList
 } from "./util";
 
-/** @type {Number} The length of time between nudging people who are still voting. */
-const NUDGE_TIMEOUT = 45000;
-
 export default class Poker extends Bot {
     constructor(props, context) {
         super(props, context);
@@ -452,20 +449,6 @@ export default class Poker extends Bot {
                     return output + `:${player ? "white_circle" : "warning"}: Voting here is **${player ? "private" : "public"}**.`
                 });
 
-                if(this.props.nudge) {
-                    if(this.nudgeTimeout) {
-                        clearTimeout(this.nudgeTimeout);
-                    }
-
-                    const nudge = () => {
-                        this.nudgeTimeout = setTimeout(() => {
-                            this.nudgeVoters().then(nudge.bind(this));
-                        }, NUDGE_TIMEOUT);
-                    };
-
-                    nudge();
-                }
-
                 return;
             }
 
@@ -494,11 +477,6 @@ export default class Poker extends Bot {
             }
 
             case "ALL_VOTED": {
-                // Stop nudging everyone
-                if(this.nudgeTimeout) {
-                    clearTimeout(this.nudgeTimeout);
-                    this.nudgeTimeout = null;
-                }
 
                 const round = nextState.rounds.pending[0];
                 const votes = round.votes;
@@ -605,17 +583,6 @@ export default class Poker extends Bot {
                 return;
             }
         }
-    }
-
-    async nudgeVoters() {
-        // Find the players still voting
-        const currentRound = this.state.rounds.pending[0];
-        const votedPlayers = currentRound.votes.map(({ person }) => this.state.players.find(person => person.id === person));
-        const votingPlayers = differenceBy(this.state.players, votedPlayers, "id");
-
-        await Promise.all(
-            votingPlayers.map(player => this.sendMessageToPerson(player, `:eyes: ${this.formatMention(player)}, we're waiting on you to vote.`))
-        );
     }
 
     async broadcast(message, omit = []) {
