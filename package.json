@@ -12,9 +12,9 @@
     "build"
   ],
   "dependencies": {
-    "chat-bot": "^0.3.0",
+    "chat-bot": "^0.4.2",
     "moment": "^2.18.1",
-    "qs": "^6.4.0"
+    "qs": "^6.5.0"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",

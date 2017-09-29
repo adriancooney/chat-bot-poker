@@ -21,6 +21,7 @@ import {
 } from "chat-bot";
 import {
     formatMarkdownTable,
+    formatVoteTable,
     formatVote,
     parseTasklist,
     formatList
@@ -510,17 +511,17 @@ export default class Poker extends Bot {
                 const suggestedVote = (minVote + 4 * averageVote + maxVote) / 6;
                 const voteDeviation = (maxVote - minVote) / 6;
 
-                const table = votes.reduce((table, vote) => {
-                    const person = nextState.players.find(person => person.id === vote.person);
-                    return Object.assign(table, { [person.firstName]: vote.value });
-                }, {});
-
-                await this.broadcast(`:high_brightness: Thank you, everyone has voted. Suggested estimate: ${formatVote(suggestedVote)} (can take up to ${formatVote(voteDeviation)} more, based on vote deviation)\n\n${formatMarkdownTable([table])}\n\n:mega: Awaiting moderator to estimate task.`);
+                await this.broadcast(
+                    `:high_brightness: Thank you, everyone has voted. Suggested estimate: ${formatVote(suggestedVote)} (can take up to ${formatVote(voteDeviation)} ` +
+                    `more, based on vote deviation)\n\n` +
+                    ` ${formatVoteTable(votes, nextState.players)}\n\n` +
+                    `:mega: Awaiting moderator to estimate task.`
+                );
 
                 const coffees = votes.filter(vote => vote.value === "coffee");
 
                 if(coffees.length) {
-                    await this.broadcast(`:coffee: ${formatList(coffees.map(vote => nextState.players.find(person => person.id === vote.person).firstName))} feel${coffees.length > 1 ? "s" : ""} it's time for a coffee break.`);
+                    await this.broadcast(`:coffee: ${formatList(coffees.map(vote => nextState.players.find(person => person.id === vote.person).firstName))} feels it's time for a coffee break.`);
                 }
 
                 await this.sendMessageToPerson(this.state.moderator, `Okay moderator, please submit your estimate. (\`estimate 10\` to estimate 10 hours)`);

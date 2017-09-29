@@ -34,7 +34,9 @@ describe("util", () => {
     describe("formatVote", () => {
         it("should correctly format the vote", () => {
             assert.equal("1 hour and 15 minutes (1.3)", formatVote(1.25));
-            assert.equal("coffee", formatVote("coffee"));
+            assert.equal(":coffee:", formatVote("coffee"));
+            assert.equal("no time (0)", formatVote(0));
+            assert.equal("no time (0)", formatVote(-1));
         });
     });
 

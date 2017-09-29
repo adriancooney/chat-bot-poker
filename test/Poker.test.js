@@ -181,10 +181,16 @@ describe("Poker", () => {
         });
 
         it("should close the round after all players have voted", async () => {
-            const votes = players.map((_, i) => i);
+            const votes = players.slice(1).map((_, i) => i).concat("coffee");
             await Promise.all(votes.map((vote, i) => chat.dispatchMessageToPerson(chat.user, `${vote}`, players[i])));
-            await chat.expectMessageInRoom(room, /everyone has voted/i);
-            await Promise.all(people.map(person => chat.expectMessageToPerson(person, /everyone has voted/i)));
+            await chat.expectMessageInRoom(room, /everyone has voted/i, 1);
+
+            for(let person of people) {
+                await chat.expectMessageToPerson(person, /everyone has voted/i, 1);
+                await chat.expectMessageToPerson(person, /coffee break/i);
+            }
+
+            await chat.expectMessageToPerson(moderator, /coffee break/i, 1);
             await chat.expectMessageToPerson(moderator, /estimate/);
 
             expect(bot.state).to.have.property("status", "moderation");
