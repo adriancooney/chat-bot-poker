@@ -1,6 +1,6 @@
 {
   "name": "chat-bot-poker",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "Sprint planning poker.",
   "main": "build/index.js",
   "scripts": {
