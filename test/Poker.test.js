@@ -123,6 +123,10 @@ describe("Poker", () => {
             await chat.dispatchMessageToRoom(room, "@bot start", moderator);
         });
 
+        it("should sort the tasks in ascending order", () => {
+            expect(bot.state.rounds.pending.map(({ task }) => task.order)).to.deep.equal([1, 2, 3])
+        });
+
         it("should allow a player to vote publically", async () => {
             await chat.dispatchMessageToRoom(room, "@bot vote 10", player);
             await chat.expectMessageInRoom(room, /vote/i);

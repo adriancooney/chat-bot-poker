@@ -22,15 +22,18 @@ export const api = {
             "todo-items": [{
                 title: "Example task",
                 id: 1,
-                link: "http://foobar.com"
+                link: "http://foobar.com",
+                order: 3
             }, {
                 title: "Example task 2",
                 id: 2,
-                link: "http://foobar.com"
+                link: "http://foobar.com",
+                order: 1
             }, {
                 title: "Example task 3",
                 id: 3,
-                link: "http://foobar.com"
+                link: "http://foobar.com",
+                order: 2
             }]
         });
     },

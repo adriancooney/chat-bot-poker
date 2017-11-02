@@ -612,6 +612,11 @@ export default class Poker extends Bot {
         tasklist = await this.getTasklist(tasklist.id);
         const tasks = await this.getTasks(tasklist);
 
+        // Sort the tasks by "order" value
+        tasks.sort((a, b) => {
+            return a.order === b.order ? 0 : a.order > b.order ? 1 : -1;
+        });
+
         // Grab the tasks from the API and create the rounds
         return this.dispatch("PLAN", {
             tasklist, tasks
