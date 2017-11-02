@@ -23,6 +23,7 @@ import {
     formatMarkdownTable,
     formatVoteTable,
     formatVote,
+    formatTask,
     parseTasklist,
     formatList
 } from "./util";
@@ -403,22 +404,8 @@ export default class Poker extends Bot {
                 }
 
                 const moderator = nextState.players.find(player => player.id === nextState.moderator.id);
-                const totalPending = nextState.rounds.pending.length;
-                const totalSkipped = nextState.rounds.skipped.length;
-                const totalCompleted = nextState.rounds.completed.length;
-                const totalTasks = totalPending + totalSkipped + totalCompleted;
 
-                let output = `---\n:arrow_right: #${totalCompleted + 1} `;
-
-                if(round.task["parent-task"]) {
-                    const parentTask = round.task["parent-task"];
-                    output += `${parentTask.content} -> `;
-                }
-
-                output += `[${round.task.title}](${round.task.link}) (${totalCompleted} of ${totalPending + totalCompleted} tasks completed${totalSkipped > 0 ? `, ${totalSkipped} skipped` : ""})`;
-
-                await this.broadcast(output);
-
+                await this.broadcast(formatTask(round.task, nextState.rounds));
                 await this.broadcast(player => {
                     const isModerator = player && player.id === nextState.moderator.id;
                     let output = `:mega: Please vote by ${!player ? `sending \`${this.formatMention(currentUser)} vote <estimate>\` or in a private message.` : "sending just a number estimate."}\n`;

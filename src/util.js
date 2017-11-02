@@ -72,6 +72,31 @@ export function formatVote(vote) {
         vote === "coffee" ? `:coffee:` : vote;
 }
 
+export function formatTask(task, rounds) {
+    let output = `---\n:arrow_right: #${rounds.completed.length + 1} `;
+
+    if(task["parent-task"]) {
+        output += `${task["parent-task"].content} -> `;
+    }
+
+    output += `[${task.title}](${task.link}) (${formatGameProgress(rounds)})`;
+
+    if(task.description) {
+        output += "\n\n> " + task.description.split("\n").join("\n> ") + "\n";
+    }
+
+    return output;
+}
+
+export function formatGameProgress(rounds) {
+    const totalPending = rounds.pending.length;
+    const totalSkipped = rounds.skipped.length;
+    const totalCompleted = rounds.completed.length;
+
+    return `${totalCompleted} of ${totalPending + totalCompleted}` +
+        ` tasks completed${totalSkipped > 0 ? `, ${totalSkipped} skipped` : ""}`;
+}
+
 export function parseTasklist(tasklist) {
     const match = tasklist.match(/(?:https?:\/\/)?([a-zA-Z\-_0-9]+)\.teamwork.com\/(?:index.cfm#)?\/?tasklists\/(\d+)/)
 

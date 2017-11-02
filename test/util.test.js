@@ -3,6 +3,7 @@ import {
     formatMarkdownTable,
     formatDuration,
     formatVote,
+    formatTask,
     parseTasklist,
     formatList
 } from "../src/util";
@@ -70,6 +71,42 @@ describe("util", () => {
 
         it("should format list of length greater than two", () => {
            assert.equal(formatList(["foo", "bar", "boot"]), "foo, bar and boot");
+        });
+    });
+
+    describe("formatTask", () => {
+        it("should format a simple task", () => {
+            assert.equal(formatTask({
+                title: "foobar",
+                link: "http://google.com"
+            }, {
+                completed: [{}],
+                pending: [{}],
+                skipped: []
+            }), "---\n:arrow_right: #2 [foobar](http://google.com) (1 of 2 tasks completed)");
+        });
+
+        it("should format a task with other skipped tasks", () => {
+            assert.equal(formatTask({
+                title: "foobar",
+                link: "http://google.com"
+            }, {
+                completed: [{}],
+                pending: [{}],
+                skipped: [{}]
+            }), "---\n:arrow_right: #2 [foobar](http://google.com) (1 of 2 tasks completed, 1 skipped)");
+        });
+
+        it("should format a task with a description", () => {
+            assert.equal(formatTask({
+                title: "foobar",
+                link: "http://google.com",
+                description: "a \n b\n\nc"
+            }, {
+                completed: [{}],
+                pending: [{}],
+                skipped: [{}]
+            }), "---\n:arrow_right: #2 [foobar](http://google.com) (1 of 2 tasks completed, 1 skipped)\n\n> a \n>  b\n> \n> c\n");
         });
     });
 });
