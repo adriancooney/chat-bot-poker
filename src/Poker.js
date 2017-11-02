@@ -477,7 +477,7 @@ export default class Poker extends Bot {
                 const voteDeviation = (maxVote - minVote) / 6;
 
                 await this.broadcast(
-                    `:high_brightness: Thank you, everyone has voted. Suggested estimate: ${formatVote(suggestedVote)} (can take up to ${formatVote(voteDeviation)} ` +
+                    `:high_brightness: Thank you, everyone has voted. Suggested estimate: **${formatVote(suggestedVote)}** (can take up to ${formatVote(voteDeviation)} ` +
                     `more, based on vote deviation)\n\n` +
                     ` ${formatVoteTable(votes, nextState.players)}\n\n` +
                     `:mega: Awaiting moderator to estimate task.`
