@@ -499,7 +499,9 @@ export default class Poker extends Bot {
                 const coffees = votes.filter(vote => vote.value === "coffee");
 
                 if(coffees.length) {
-                    await this.broadcast(`:coffee: ${formatList(coffees.map(vote => nextState.players.find(person => person.id === vote.person).firstName))} feels it's time for a coffee break.`);
+                    const coffeePeople = coffees.map(vote => nextState.players.find(person => person.id === vote.person).firstName);
+
+                    await this.broadcast(`:coffee: ${formatList(coffeePeople)} feel${coffeePeople.length === 1 ? "s" : ""} it's time for a coffee break.`);
                 }
 
                 await this.sendMessageToPerson(this.state.moderator, `Okay moderator, please submit your estimate. (\`estimate 10\` to estimate 10 hours)`);
