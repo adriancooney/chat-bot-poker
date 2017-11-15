@@ -655,11 +655,15 @@ export default class Poker extends Bot {
             return this.reply(input, `Sorry ${this.state.moderator.firstName}, please enter a positive numerical estimate.`);
         }
 
-        await this.updateTask(this.state.tasklist, this.state.rounds.pending[0].task.id, estimate);
+        try {
+            await this.updateTaskEstimate(this.state.rounds.pending[0].task.id, estimate);
 
-        return this.dispatch("FINAL_VOTE", {
-            vote: estimate
-        });
+            return this.dispatch("FINAL_VOTE", {
+                vote: estimate
+            });
+        } catch(err) {
+            return this.reply(input, `I'm sorry, I cannot to estimate task due to an error: ${err.message}`);
+        }
     }
 
     showStatus(message) {
@@ -685,23 +689,16 @@ export default class Poker extends Bot {
         }));
     }
 
-    async updateTask(tasklist, id, estimate) {
-        const hours = Math.floor(estimate);
-        const minutes = Math.floor((estimate - hours) * 60);
-
-        await this.props.api.request("/?action=invoke.tasks.OnSetTaskEstimates()", {
-            method: "POST",
-            raw: true,
+    async updateTaskEstimate(id, estimate) {
+        await this.props.api.request(`/tasks/${id}/estimatedtime.json`, {
+            method: "PUT",
             headers: {
-                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                "twProjectsVer": "2.0"
+                Origin: "teamwork.com"
             },
-            body: qs.stringify({
-                projectId: tasklist.projectId,
+            body: {
                 taskId: id,
-                taskEstimateHours: hours,
-                taskEstimateMins: minutes
-            })
+                taskEstimatedMinutes: estimate * 60
+            }
         });
     }
 }
